@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vokabel-Übung</title>
+    <title>Multi-Choice</title>
     <!-- Bootstrap 5 CSS -->
      <link  href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"  rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
@@ -104,71 +104,6 @@
     
 
     <script>
-/*
-LERNSTOFF:
-==========================================================================
-HTML5 data-* Attribute
-==========================================================================
-Das data-* Attribut ist ein benutzerdefiniertes Attribut, das in HTML5 verwendet wird, 
-um zusätzliche Informationen zu einem Element zu speichern.  
-In JavaScript können Sie auf diese Attribute über die dataset-Eigenschaft des Elements 
-zugreifen.
-==========================================================================
-In HTML:
---------
-<div id="user" data-id="1234567890" data-user="carinaanand" data-date-of-birth>
-  Carina Anand
-</div>
-
-In JavaScript:
----------------
-const el = document.querySelector("#user");
-
-Attributes can be set and read by the camelCase name/key as an object property of the dataset: 
-    element.dataset.keyname.
-Attributes can also be set and read using bracket syntax: 
-    element.dataset['keyname'].
-
-The in operator can check if a given attribute exists: 
-    'keyname' in element.dataset. 
-        Note that this will walk the prototype chain of dataset and may be unsafe if
-        you have external code that may pollute the prototype chain. 
-Several alternatives exist, such as 
-    Object.hasOwn(element.dataset, 'keyname'), 
-or just checking 
-    if element.dataset.keyname !== undefined.
-
-When the attribute is set, its value is always converted to a string. !!!
-    ement.dataset.example = null is converted into data-example="null".
-
-To remove an attribute, you can use the delete operator: 
-    delete element.dataset.keyname.
-
-// Example:
-// el.id === 'user'
-// el.dataset.id === '1234567890'
-// el.dataset.user === 'carinaanand'
-// el.dataset.dateOfBirth === ''
-
-// set a data attribute
-el.dataset.dateOfBirth = "1960-10-03";
-// Result on JS: el.dataset.dateOfBirth === '1960-10-03'
-// Result on HTML: <div id="user" data-id="1234567890" data-user="carinaanand" data-date-of-birth="1960-10-03">Carina Anand</div>
-
-delete el.dataset.dateOfBirth;
-// Result on JS: el.dataset.dateOfBirth === undefined
-// Result on HTML: <div id="user" data-id="1234567890" data-user="carinaanand">Carina Anand</div>
-
-if (el.dataset.someDataAttr === undefined) {
-  el.dataset.someDataAttr = "mydata";
-  // Result on JS: 'someDataAttr' in el.dataset === true
-  // Result on HTML: <div id="user" data-id="1234567890" data-user="carinaanand" data-some-data-attr="mydata">Carina Anand</div>
-}
-
-
-*/
-
-
 
 
 // Funktion zur Anzeige von Fehlermeldungen
