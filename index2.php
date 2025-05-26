@@ -293,7 +293,7 @@ $role = $_SESSION['role'];
                         <a class="nav-link" href="miniTest.php">Grammatiktrainer</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="konjugationstrainer.php">MultiChoice</a>
+                        <a class="nav-link" href="zuordnen.php">MultiChoice</a>
                     </li>
                     <li class="nav-item teacher-section">
                         <a class="nav-link" href="schueler_verwalten.php">Schüler verwalten</a>
