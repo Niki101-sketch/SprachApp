@@ -18,11 +18,12 @@ if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
     header("Location: login.php");
     exit();
 }
-
-if ($_SESSION['role'] !== 'teacher' && $_SESSION['role'] !== 'admin') {
+/*
+if ($_SESSION['role'] !== 'teacher') {
     header("Location: index2.php");
     exit();
 }
+    keine Ahnung warum das nicht funktioniert*/ 
 
 // Benutzerinformationen aus der Session holen
 $teachername = $_SESSION['username'];
