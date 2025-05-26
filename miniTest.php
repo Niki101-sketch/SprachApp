@@ -37,7 +37,7 @@ $stmt = $pdo->prepare("
     SELECT 
         u.unitid,
         u.unitname,
-        COUNT(vg.gvocabid) as vocab_count
+        COUNT(DISTINCT vg.gvocabid) as vocab_count
     FROM unit u
     LEFT JOIN vocabgerman vg ON u.unitid = vg.unitid
     GROUP BY u.unitid, u.unitname
@@ -58,20 +58,31 @@ if ($selectedUnitId) {
     $unitResult = $unitStmt->fetch(PDO::FETCH_ASSOC);
     $selectedUnitName = $unitResult ? $unitResult['unitname'] : 'Unbekannte Unit';
     
-    // Vokabeln für die ausgewählte Unit laden
+    // Vokabeln für die ausgewählte Unit laden - nur deutsche Wörter
     $vocabStmt = $pdo->prepare("
-        SELECT 
+        SELECT DISTINCT
             vg.gvocabid,
-            vg.german_word as germanword,
-            ve.english_word as targetword
+            vg.german_word as germanword
         FROM vocabgerman vg
-        JOIN vocabmapping vm ON vg.gvocabid = vm.gvocabid
-        JOIN vocabenglish ve ON vm.evocabid = ve.evocabid
         WHERE vg.unitid = ?
         ORDER BY vg.german_word
     ");
     $vocabStmt->execute([$selectedUnitId]);
     $vocabs = $vocabStmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Für jede deutsche Vokabel alle möglichen englischen Übersetzungen laden
+    foreach ($vocabs as &$vocab) {
+        $translationStmt = $pdo->prepare("
+            SELECT 
+                ve.english_word
+            FROM vocabmapping vm
+            JOIN vocabenglish ve ON vm.evocabid = ve.evocabid
+            WHERE vm.gvocabid = ?
+        ");
+        $translationStmt->execute([$vocab['gvocabid']]);
+        $translations = $translationStmt->fetchAll(PDO::FETCH_COLUMN);
+        $vocab['translations'] = $translations;
+    }
 }
 
 // Verarbeitung des Test-Formulars
@@ -83,18 +94,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
     $totalCount = count($_POST['vocab_id']);
     
     foreach ($_POST['vocab_id'] as $index => $vocabId) {
-        $userAnswer = $_POST['user_answer'][$index];
-        $correctAnswer = $_POST['correct_answer'][$index];
+        $userAnswer = trim($_POST['user_answer'][$index]);
+        $germanWord = $_POST['german_word'][$index];
         
-        $isCorrect = strtolower(trim($userAnswer)) === strtolower(trim($correctAnswer));
+        // Alle möglichen korrekten Antworten für dieses deutsche Wort holen
+        $correctStmt = $pdo->prepare("
+            SELECT 
+                ve.english_word
+            FROM vocabmapping vm
+            JOIN vocabenglish ve ON vm.evocabid = ve.evocabid
+            WHERE vm.gvocabid = ?
+        ");
+        $correctStmt->execute([$vocabId]);
+        $correctAnswers = $correctStmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        // Prüfen, ob die Antwort korrekt ist (case-insensitive)
+        $isCorrect = false;
+        foreach ($correctAnswers as $correctAnswer) {
+            if (strtolower(trim($userAnswer)) === strtolower(trim($correctAnswer))) {
+                $isCorrect = true;
+                break;
+            }
+        }
+        
         if ($isCorrect) {
             $correctCount++;
         }
         
         $results[] = [
-            'german' => $_POST['german_word'][$index],
+            'german' => $germanWord,
             'userAnswer' => $userAnswer,
-            'correctAnswer' => $correctAnswer,
+            'correctAnswers' => $correctAnswers,
             'isCorrect' => $isCorrect
         ];
     }
@@ -303,6 +333,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
             display: none;
         }
         
+        .synonyms-info {
+            font-size: 0.875rem;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
         /* Responsive adjustments */
         @media (max-width: 767.98px) {
             .user-info {
@@ -336,7 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="einheiten.php">Einheiten</a>
-                </lPi>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link active" href="miniTest.php">Grammatiktrainer</a>
                 </li>
@@ -429,9 +465,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
                                         <div class="row align-items-center">
                                             <div class="col-md-4 mb-2 mb-md-0">
                                                 <strong><?php echo htmlspecialchars($vocab['germanword']); ?></strong>
+                                                <?php if (count($vocab['translations']) > 1): ?>
+                                                    <div class="synonyms-info">
+                                                        (<?php echo count($vocab['translations']); ?> mögliche Antworten)
+                                                    </div>
+                                                <?php endif; ?>
                                                 <input type="hidden" name="vocab_id[]" value="<?php echo $vocab['gvocabid']; ?>">
                                                 <input type="hidden" name="german_word[]" value="<?php echo htmlspecialchars($vocab['germanword']); ?>">
-                                                <input type="hidden" name="correct_answer[]" value="<?php echo htmlspecialchars($vocab['targetword']); ?>">
                                             </div>
                                             <div class="col-md-8">
                                                 <input type="text" name="user_answer[]" class="form-control" 
@@ -460,17 +500,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
                 <?php foreach ($results as $result): ?>
                     <div class="result-item <?php echo $result['isCorrect'] ? 'result-correct' : 'result-incorrect'; ?>">
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <strong><?php echo htmlspecialchars($result['german']); ?></strong>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <span>Ihre Antwort: <?php echo htmlspecialchars($result['userAnswer']); ?></span>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <?php if (!$result['isCorrect']): ?>
-                                    <span>Richtige Antwort: <?php echo htmlspecialchars($result['correctAnswer']); ?></span>
+                                    <span>Mögliche Antworten: 
+                                        <?php echo htmlspecialchars(implode(', ', $result['correctAnswers'])); ?>
+                                    </span>
                                 <?php else: ?>
                                     <span>Korrekt!</span>
+                                    <?php if (count($result['correctAnswers']) > 1): ?>
+                                        <div class="synonyms-info">
+                                            Weitere mögliche Antworten: 
+                                            <?php 
+                                            $otherAnswers = array_filter($result['correctAnswers'], function($answer) use ($result) {
+                                                return strtolower(trim($answer)) !== strtolower(trim($result['userAnswer']));
+                                            });
+                                            echo htmlspecialchars(implode(', ', $otherAnswers)); 
+                                            ?>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
                         </div>
