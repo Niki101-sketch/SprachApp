@@ -372,7 +372,7 @@ $role = $_SESSION['role'];
                         </ul>
                     </div>
                     <div class="feature-footer">
-                        <a href="konjugationstrainer.php" class="btn btn-primary w-100">MultiChoice starten</a>
+                        <a href="zuordnen.php" class="btn btn-primary w-100">MultiChoice starten</a>
                     </div>
                 </div>
             </div>
@@ -389,7 +389,7 @@ $role = $_SESSION['role'];
                         <div class="role-feature">
                             <h5>Schülerverwaltung</h5>
                             <p>Verwalten Sie Ihre Schüler, sehen Sie deren Fortschritte ein und erstellen Sie personalisierte Übungen.</p>
-                            <a href="schueler_verwalten.php" class="btn btn-info mt-2">Schüler verwalten</a>
+                            <a href="teacherdashboard.php" class="btn btn-info mt-2">Schüler verwalten</a>
                         </div>
                     </div>
                     <div class="col-md-6">
