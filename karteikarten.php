@@ -39,7 +39,12 @@ while($row = $result->fetch_assoc()) {
     $words[] = $row; 
 } 
 
-$current = $_GET['current'] ?? 0; 
+$current = $_GET['current'] ?? 0;
+if (isset($_POST['skip'])) {
+    $current = isset($_POST['current']) ? intval($_POST['current']) + 1 : 1;
+    header("Location: ?unit=$unitid&current=$current");
+    exit;
+}
 
 // Unit-Name holen
 $unitNameSql = "SELECT unitname FROM unit WHERE unitid = $unitid";
@@ -294,21 +299,23 @@ if ($unitNameRow = $unitNameResult->fetch_assoc()) {
                                 <span class="text-muted">Karte <?php echo ($current + 1); ?> von <?php echo count($words); ?></span>
                             </div>
                             
-                            <?php if (!isset($_POST['show'])): ?>
-                                <h2 class="mb-4"><?php echo htmlspecialchars($words[$current]['german_word']); ?></h2>
-                                <form method="post">
-                                    <button type="submit" name="show" class="btn btn-primary">Umdrehen</button>
-                                    <input type="hidden" name="current" value="<?php echo $current; ?>">
-                                </form>
-                            <?php else: ?>
-                                <h2 class="mb-4"><?php echo htmlspecialchars($words[$current]['english_word']); ?></h2>
-                                <form method="post" action="?unit=<?php echo $unitid; ?>&current=<?php echo $current + 1; ?>">
-                                    <button type="submit" name="answer" value="right" class="btn btn-success mx-2">Richtig gewusst</button>
-                                    <button type="submit" name="answer" value="wrong" class="btn btn-danger mx-2">Falsch gewusst</button>
-                                    <input type="hidden" name="gvocabid" value="<?php echo $words[$current]['gvocabid']; ?>">
-                                    <input type="hidden" name="evocabid" value="<?php echo $words[$current]['evocabid']; ?>">
-                                </form>
-                            <?php endif; ?>
+
+                        <?php if (!isset($_POST['show'])): ?>
+                            <h2 class="mb-4"><?php echo htmlspecialchars($words[$current]['german_word']); ?></h2>
+                            <form method="post">
+                                <button type="submit" name="show" class="btn btn-primary">Umdrehen</button>
+                                <button type="submit" name="skip" value="1" class="btn btn-secondary mx-2">Überspringen</button>
+                                <input type="hidden" name="current" value="<?php echo $current; ?>">
+                            </form>
+                        <?php else: ?>
+                            <h2 class="mb-4"><?php echo htmlspecialchars($words[$current]['english_word']); ?></h2>
+                            <form method="post" action="?unit=<?php echo $unitid; ?>&current=<?php echo $current + 1; ?>">
+                                <button type="submit" name="answer" value="right" class="btn btn-success mx-2">Richtig gewusst</button>
+                                <button type="submit" name="answer" value="wrong" class="btn btn-danger mx-2">Falsch gewusst</button>
+                                <input type="hidden" name="gvocabid" value="<?php echo $words[$current]['gvocabid']; ?>">
+                                <input type="hidden" name="evocabid" value="<?php echo $words[$current]['evocabid']; ?>">
+                            </form>
+                        <?php endif; ?>
                         </div>
                     </div>
                 <?php else: ?>
