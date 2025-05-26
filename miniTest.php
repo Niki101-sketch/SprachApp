@@ -26,11 +26,16 @@ $dbname = "if0_38905283_sprachapp";
 
 // Verbindung mit PDO
 try {
-    $pdo = new PDO("mysql:host=$servername;dbname=$dbname", $dbusername, $dbpassword);
+    $pdo = new PDO(
+        "mysql:host=$servername;dbname=$dbname;charset=utf8mb4", // <-- charset ergänzt
+        $dbusername,
+        $dbpassword
+    );
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
     die("Verbindung fehlgeschlagen: " . $e->getMessage());
 }
+
 
 // Units aus der Datenbank laden
 $stmt = $pdo->prepare("
