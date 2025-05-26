@@ -6,8 +6,15 @@ error_reporting(E_ALL);
 include 'connection.php'; 
 
 // Get user info - wichtig für die Anzeige im Header
-$username = isset($_SESSION['username']) ? $_SESSION['username'] : '';
-$role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
+$username = '';
+if (isset($_SESSION['username'])) {
+    $username = $_SESSION['username'];
+}
+
+$role = '';
+if (isset($_SESSION['role'])) {
+    $role = $_SESSION['role'];
+}
 
 $unitid = $_GET['unit']; 
 $studentid = 1; // Fest für Demo 
@@ -39,9 +46,20 @@ while($row = $result->fetch_assoc()) {
     $words[] = $row; 
 } 
 
-$current = $_GET['current'] ?? 0;
+// Current Position bestimmen
+$current = 0;
+if (isset($_GET['current'])) {
+    $current = $_GET['current'];
+}
+
+// Skip Button behandeln
 if (isset($_POST['skip'])) {
-    $current = isset($_POST['current']) ? intval($_POST['current']) + 1 : 1;
+    $current = 0;
+    if (isset($_POST['current'])) {
+        $current = intval($_POST['current']) + 1;
+    } else {
+        $current = 1;
+    }
     header("Location: ?unit=$unitid&current=$current");
     exit;
 }
@@ -292,22 +310,39 @@ if ($unitNameRow = $unitNameResult->fetch_assoc()) {
                 <a href="einheiten.php" class="btn btn-outline-secondary mb-3">← Zurück zur Unit-Auswahl</a>
                 <h3>Unit <?php echo $unitid; ?>: <?php echo htmlspecialchars($unitName); ?></h3>
                 
-                <?php if (!empty($words) && $current < count($words)): ?>
+                <?php 
+                // Prüfen ob noch Vokabeln da sind und current kleiner als Anzahl
+                $hasWordsLeft = false;
+                if (!empty($words) && $current < count($words)) {
+                    $hasWordsLeft = true;
+                }
+                
+                if ($hasWordsLeft) { 
+                ?>
                     <div class="card text-center">
                         <div class="card-body">
                             <div class="mb-4">
                                 <span class="text-muted">Karte <?php echo ($current + 1); ?> von <?php echo count($words); ?></span>
                             </div>
                             
-
-                        <?php if (!isset($_POST['show'])): ?>
+                        <?php 
+                        // Prüfen ob "show" Button geklickt wurde
+                        $showAnswer = false;
+                        if (isset($_POST['show'])) {
+                            $showAnswer = true;
+                        }
+                        
+                        if (!$showAnswer) { 
+                        ?>
                             <h2 class="mb-4"><?php echo htmlspecialchars($words[$current]['german_word']); ?></h2>
                             <form method="post">
                                 <button type="submit" name="show" class="btn btn-primary">Umdrehen</button>
                                 <button type="submit" name="skip" value="1" class="btn btn-secondary mx-2">Überspringen</button>
                                 <input type="hidden" name="current" value="<?php echo $current; ?>">
                             </form>
-                        <?php else: ?>
+                        <?php 
+                        } else { 
+                        ?>
                             <h2 class="mb-4"><?php echo htmlspecialchars($words[$current]['english_word']); ?></h2>
                             <form method="post" action="?unit=<?php echo $unitid; ?>&current=<?php echo $current + 1; ?>">
                                 <button type="submit" name="answer" value="right" class="btn btn-success mx-2">Richtig gewusst</button>
@@ -315,10 +350,14 @@ if ($unitNameRow = $unitNameResult->fetch_assoc()) {
                                 <input type="hidden" name="gvocabid" value="<?php echo $words[$current]['gvocabid']; ?>">
                                 <input type="hidden" name="evocabid" value="<?php echo $words[$current]['evocabid']; ?>">
                             </form>
-                        <?php endif; ?>
+                        <?php 
+                        } 
+                        ?>
                         </div>
                     </div>
-                <?php else: ?>
+                <?php 
+                } else { 
+                ?>
                     <div class="card text-center">
                         <div class="card-body">
                             <h4 class="mb-4">Keine Vokabeln mehr!</h4>
@@ -329,7 +368,9 @@ if ($unitNameRow = $unitNameResult->fetch_assoc()) {
                             </div>
                         </div>
                     </div>
-                <?php endif; ?>
+                <?php 
+                } 
+                ?>
             </div>
         </div>
     </div>
