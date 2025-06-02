@@ -35,8 +35,8 @@ if (isset($_GET['unit']) && isset($_GET['group'])) {
     if ($unitRow = $unitResult->fetch_assoc()) {
         $unitName = $unitRow['unitname'];
         
-        // Berechne OFFSET für die Vokabeln (max 10 pro Gruppe)
-        $offset = ($group - 1) * 10;
+        // Berechne OFFSET für die Vokabeln (max 5 pro Gruppe)
+        $offset = ($group - 1) * 5;
         
         // Vokabeln für diese Gruppe holen
         $vocabStmt = $conn->prepare("
@@ -46,7 +46,7 @@ if (isset($_GET['unit']) && isset($_GET['group'])) {
             JOIN vocabenglish ve ON vm.evocabid = ve.evocabid
             WHERE vg.unitid = ? AND ve.unitid = ?
             ORDER BY vg.gvocabid
-            LIMIT 10 OFFSET ?
+            LIMIT 5 OFFSET ?
         ");
         $vocabStmt->bind_param("iii", $unitid, $unitid, $offset);
         $vocabStmt->execute();
@@ -65,6 +65,11 @@ if (isset($_GET['unit']) && isset($_GET['group'])) {
             $showTest = true;
         }
     }
+} elseif (isset($_GET['unit'])) {
+    // Nur Unit angegeben, starte mit Gruppe 1
+    $unitid = intval($_GET['unit']);
+    header("Location: zuordnen.php?unit=$unitid&group=1");
+    exit;
 }
 
 // Units laden falls nicht im Test-Modus
@@ -235,9 +240,43 @@ if (!$showTest) {
 
             <div class="row mt-3">
                 <div class="col-12 text-center">
+                    <?php 
+                    // Prüfe ob es eine nächste Gruppe gibt
+                    $nextGroup = $group + 1;
+                    $nextOffset = ($nextGroup - 1) * 5;
+                    
+                    $checkStmt = $conn->prepare("
+                        SELECT COUNT(*) as count
+                        FROM vocabgerman vg
+                        JOIN vocabmapping vm ON vg.gvocabid = vm.gvocabid
+                        JOIN vocabenglish ve ON vm.evocabid = ve.evocabid
+                        WHERE vg.unitid = ? AND ve.unitid = ?
+                        LIMIT 5 OFFSET ?
+                    ");
+                    $checkStmt->bind_param("iii", $unitid, $unitid, $nextOffset);
+                    $checkStmt->execute();
+                    $checkResult = $checkStmt->get_result();
+                    $hasNextGroup = false;
+                    if ($checkRow = $checkResult->fetch_assoc()) {
+                        $hasNextGroup = $checkRow['count'] > 0;
+                    }
+                    ?>
+                    
                     <button id="restart-btn" class="btn btn-primary btn-lg" onclick="restartGame()">
                         Wiederholen
                     </button>
+                    
+                    <?php if ($hasNextGroup): ?>
+                        <a href="zuordnen.php?unit=<?php echo $unitid; ?>&group=<?php echo $nextGroup; ?>" 
+                           class="btn btn-success btn-lg ms-2" id="next-btn" style="display: none;">
+                            Nächste 5 Vokabeln
+                        </a>
+                    <?php else: ?>
+                        <a href="zuordnen.php" class="btn btn-success btn-lg ms-2" id="finish-btn" style="display: none;">
+                            Unit abgeschlossen! Neue Unit wählen
+                        </a>
+                    <?php endif; ?>
+                    
                     <a href="zuordnen.php" class="btn btn-secondary btn-lg ms-2">
                         Andere Unit wählen
                     </a>
@@ -394,6 +433,16 @@ if (!$showTest) {
                     resultMessage.textContent = 'Gratulation! Du hast alle Vokabelpaare richtig zugeordnet!';
                     resultMessage.style.display = 'block';
                     resultMessage.className = 'result-message alert alert-success';
+
+                    // Zeige den "Weiter" Button
+                    const nextBtn = document.getElementById('next-btn');
+                    const finishBtn = document.getElementById('finish-btn');
+                    if (nextBtn) {
+                        nextBtn.style.display = 'inline-block';
+                    }
+                    if (finishBtn) {
+                        finishBtn.style.display = 'inline-block';
+                    }
                 }
 
                 // Setze die ausgewählten Karten zurück	
@@ -475,6 +524,13 @@ if (!$showTest) {
             // Zurücksetzen der Anzeige
             document.getElementById('score').textContent = '0';
             document.getElementById('result-message').style.display = 'none';
+            
+            // Verstecke die Weiter-Buttons
+            const nextBtn = document.getElementById('next-btn');
+            const finishBtn = document.getElementById('finish-btn');
+            if (nextBtn) nextBtn.style.display = 'none';
+            if (finishBtn) finishBtn.style.display = 'none';
+            
             // Neues Spiel initialisieren
             initializeGame();
         }
