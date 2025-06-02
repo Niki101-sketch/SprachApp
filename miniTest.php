@@ -18,27 +18,51 @@ if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
 $username = isset($_SESSION['username']) ? $_SESSION['username'] : '';
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : '';
 
-// Manuelle Datenbankverbindung
+// Manuelle Datenbankverbindung mit MySQLi
 $servername = "sql108.infinityfree.com";
 $dbusername = "if0_38905283";
 $dbpassword = "ewgjt0aaksuC";
 $dbname = "if0_38905283_sprachapp";
 
-// Verbindung mit PDO
-try {
-    $pdo = new PDO(
-        "mysql:host=$servername;dbname=$dbname;charset=utf8mb4", // <-- charset ergänzt
-        $dbusername,
-        $dbpassword
-    );
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    die("Verbindung fehlgeschlagen: " . $e->getMessage());
+// Verbindung mit MySQLi und korrektem Charset
+$conn = new mysqli($servername, $dbusername, $dbpassword, $dbname);
+
+// Verbindung prüfen
+if ($conn->connect_error) {
+    die("Verbindung fehlgeschlagen: " . $conn->connect_error);
 }
 
+// Zeichensatz auf UTF-8 setzen
+$conn->set_charset("utf8mb4");
+
+// Funktion zur Reparatur von doppelt kodierten UTF-8 Zeichen
+function repairUTF8($text) {
+    // Häufige doppelt kodierte Zeichen reparieren
+    $replacements = [
+        'Ã¤' => 'ä',
+        'Ã¶' => 'ö', 
+        'Ã¼' => 'ü',
+        'Ã„' => 'Ä',
+        'Ã–' => 'Ö',
+        'Ãœ' => 'Ü',
+        'ÃŸ' => 'ß',
+        'Ã©' => 'é',
+        'Ã¨' => 'è',
+        'Ã¡' => 'á',
+        'Ã ' => 'à',
+        'Ã­' => 'í',
+        'Ã¬' => 'ì',
+        'Ã³' => 'ó',
+        'Ã²' => 'ò',
+        'Ãº' => 'ú',
+        'Ã¹' => 'ù'
+    ];
+    
+    return str_replace(array_keys($replacements), array_values($replacements), $text);
+}
 
 // Units aus der Datenbank laden
-$stmt = $pdo->prepare("
+$unitQuery = "
     SELECT 
         u.unitid,
         u.unitname,
@@ -47,24 +71,39 @@ $stmt = $pdo->prepare("
     LEFT JOIN vocabgerman vg ON u.unitid = vg.unitid
     GROUP BY u.unitid, u.unitname
     ORDER BY u.unitid
-");
-$stmt->execute();
-$units = $stmt->fetchAll(PDO::FETCH_ASSOC);
+";
+$unitResult = $conn->query($unitQuery);
+
+$units = [];
+if ($unitResult->num_rows > 0) {
+    while ($row = $unitResult->fetch_assoc()) {
+        // UTF-8 Reparatur für Unit-Namen anwenden
+        $row['unitname'] = repairUTF8($row['unitname']);
+        $units[] = $row;
+    }
+}
 
 // Vokabeln laden, wenn eine Unit ausgewählt wurde
 $vocabs = [];
-$selectedUnitId = isset($_GET['unit']) ? $_GET['unit'] : null;
+$selectedUnitId = isset($_GET['unit']) ? intval($_GET['unit']) : null;
 $selectedUnitName = '';
 
 if ($selectedUnitId) {
     // Name der ausgewählten Unit abrufen
-    $unitStmt = $pdo->prepare("SELECT unitname FROM unit WHERE unitid = ?");
-    $unitStmt->execute([$selectedUnitId]);
-    $unitResult = $unitStmt->fetch(PDO::FETCH_ASSOC);
-    $selectedUnitName = $unitResult ? $unitResult['unitname'] : 'Unbekannte Unit';
+    $unitStmt = $conn->prepare("SELECT unitname FROM unit WHERE unitid = ?");
+    $unitStmt->bind_param("i", $selectedUnitId);
+    $unitStmt->execute();
+    $unitResult = $unitStmt->get_result();
+    
+    if ($unitRow = $unitResult->fetch_assoc()) {
+        $selectedUnitName = repairUTF8($unitRow['unitname']);
+    } else {
+        $selectedUnitName = 'Unbekannte Unit';
+    }
+    $unitStmt->close();
     
     // Vokabeln für die ausgewählte Unit laden - nur deutsche Wörter
-    $vocabStmt = $pdo->prepare("
+    $vocabStmt = $conn->prepare("
         SELECT DISTINCT
             vg.gvocabid,
             vg.german_word as germanword
@@ -72,21 +111,37 @@ if ($selectedUnitId) {
         WHERE vg.unitid = ?
         ORDER BY vg.german_word
     ");
-    $vocabStmt->execute([$selectedUnitId]);
-    $vocabs = $vocabStmt->fetchAll(PDO::FETCH_ASSOC);
+    $vocabStmt->bind_param("i", $selectedUnitId);
+    $vocabStmt->execute();
+    $vocabResult = $vocabStmt->get_result();
+    
+    while ($row = $vocabResult->fetch_assoc()) {
+        // UTF-8 Reparatur für deutsche Wörter anwenden
+        $row['germanword'] = repairUTF8($row['germanword']);
+        $vocabs[] = $row;
+    }
+    $vocabStmt->close();
     
     // Für jede deutsche Vokabel alle möglichen englischen Übersetzungen laden
     foreach ($vocabs as &$vocab) {
-        $translationStmt = $pdo->prepare("
+        $translationStmt = $conn->prepare("
             SELECT 
                 ve.english_word
             FROM vocabmapping vm
             JOIN vocabenglish ve ON vm.evocabid = ve.evocabid
             WHERE vm.gvocabid = ?
         ");
-        $translationStmt->execute([$vocab['gvocabid']]);
-        $translations = $translationStmt->fetchAll(PDO::FETCH_COLUMN);
+        $translationStmt->bind_param("i", $vocab['gvocabid']);
+        $translationStmt->execute();
+        $translationResult = $translationStmt->get_result();
+        
+        $translations = [];
+        while ($transRow = $translationResult->fetch_assoc()) {
+            // UTF-8 Reparatur für englische Übersetzungen anwenden
+            $translations[] = repairUTF8($transRow['english_word']);
+        }
         $vocab['translations'] = $translations;
+        $translationStmt->close();
     }
 }
 
@@ -103,15 +158,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
         $germanWord = $_POST['german_word'][$index];
         
         // Alle möglichen korrekten Antworten für dieses deutsche Wort holen
-        $correctStmt = $pdo->prepare("
+        $correctStmt = $conn->prepare("
             SELECT 
                 ve.english_word
             FROM vocabmapping vm
             JOIN vocabenglish ve ON vm.evocabid = ve.evocabid
             WHERE vm.gvocabid = ?
         ");
-        $correctStmt->execute([$vocabId]);
-        $correctAnswers = $correctStmt->fetchAll(PDO::FETCH_COLUMN);
+        $correctStmt->bind_param("i", $vocabId);
+        $correctStmt->execute();
+        $correctResult = $correctStmt->get_result();
+        
+        $correctAnswers = [];
+        while ($correctRow = $correctResult->fetch_assoc()) {
+            // UTF-8 Reparatur für korrekte Antworten anwenden
+            $correctAnswers[] = repairUTF8($correctRow['english_word']);
+        }
+        $correctStmt->close();
         
         // Prüfen, ob die Antwort korrekt ist (case-insensitive)
         $isCorrect = false;
@@ -134,6 +197,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
         ];
     }
 }
+
+// Verbindung schließen
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -161,11 +227,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
         .navbar-brand {
             font-weight: bold;
             font-size: 1.5rem;
+            color: white;
         }
         
         .nav-link {
             font-weight: 600;
             text-align: center;
+            color: white !important;
         }
         
         .nav-link.active {
@@ -365,42 +433,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
 <body>
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-    <div class="container">
-        <a class="navbar-brand" href="index2.php">SprachApp</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="index2.php">Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="einheiten.php">Einheiten</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="miniTest.php">Grammatiktrainer</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="zuordnen.php">MultiChoice</a>
-                </li>
-                <li class="nav-item teacher-section">
-                    <a class="nav-link" href="schueler_verwalten.php">Schüler verwalten</a>
-                </li>
-                <li class="nav-item admin-section">
-                    <a class="nav-link" href="admin_panel.php">Admin-Panel</a>
-                </li>
-            </ul>
-            <div class="d-flex align-items-center flex-wrap">
-                <span class="user-info">
-                    <?php echo htmlspecialchars($username); ?>
-                    <span class="role-badge"><?php echo htmlspecialchars($role); ?></span>
-                </span>
-                <a href="logout.php" class="btn logout-btn">Abmelden</a>
+        <div class="container">
+            <a class="navbar-brand" href="index2.php">SprachApp</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index2.php">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="einheiten.php">Einheiten</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="miniTest.php">Grammatiktrainer</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="zuordnen.php">MultiChoice</a>
+                    </li>
+                    <li class="nav-item teacher-section">
+                        <a class="nav-link" href="schueler_verwalten.php">Schüler verwalten</a>
+                    </li>
+                    <li class="nav-item admin-section">
+                        <a class="nav-link" href="admin_panel.php">Admin-Panel</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center flex-wrap">
+                    <span class="user-info">
+                        <?php echo htmlspecialchars($username); ?>
+                        <span class="role-badge"><?php echo htmlspecialchars($role); ?></span>
+                    </span>
+                    <a href="logout.php" class="btn logout-btn">Abmelden</a>
+                </div>
             </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <div class="container content">
         <div class="welcome-box">
@@ -411,9 +479,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_test'])) {
         <?php if (!$selectedUnitId): ?>
             <!-- Units Auswahl -->
             <div class="row g-4">
-                <div class="col-12">
-                    <h3 class="mb-4">Verfügbare Units</h3>
-                </div>
                 
                 <?php if (empty($units)): ?>
                     <div class="col-12">

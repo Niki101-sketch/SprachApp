@@ -16,6 +16,32 @@ if (!$isLoggedIn) {
 $username = $_SESSION['username'];
 $role = $_SESSION['role'];
 
+// Funktion zur Reparatur von doppelt kodierten UTF-8 Zeichen
+function repairUTF8($text) {
+    // Häufige doppelt kodierte Zeichen reparieren
+    $replacements = [
+        'Ã¤' => 'ä',
+        'Ã¶' => 'ö', 
+        'Ã¼' => 'ü',
+        'Ã„' => 'Ä',
+        'Ã–' => 'Ö',
+        'Ãœ' => 'Ü',
+        'ÃŸ' => 'ß',    
+        'Ã©' => 'é',
+        'Ã¨' => 'è',
+        'Ã¡' => 'á',
+        'Ã ' => 'à',
+        'Ã­' => 'í',
+        'Ã¬' => 'ì',
+        'Ã³' => 'ó',
+        'Ã²' => 'ò',
+        'Ãº' => 'ú',
+        'Ã¹' => 'ù'
+    ];
+    
+    return str_replace(array_keys($replacements), array_values($replacements), $text);
+}
+
 // Variablen für Test-Modus
 $showTest = false;
 $vocabularyPairs = [];
@@ -23,9 +49,15 @@ $unitName = "";
 $group = 1;
 
 // Prüfen ob Test gestartet werden soll
-if (isset($_GET['unit']) && isset($_GET['group'])) {
+if (isset($_GET['unit'])) {
     $unitid = intval($_GET['unit']);
-    $group = intval($_GET['group']);
+    
+    // Wenn group Parameter nicht gesetzt ist, starte mit Gruppe 1
+    if (isset($_GET['group'])) {
+        $group = intval($_GET['group']);
+    } else {
+        $group = 1;
+    }
     
     // Unit-Name holen
     $unitStmt = $conn->prepare("SELECT unitname FROM unit WHERE unitid = ?");
@@ -33,7 +65,7 @@ if (isset($_GET['unit']) && isset($_GET['group'])) {
     $unitStmt->execute();
     $unitResult = $unitStmt->get_result();
     if ($unitRow = $unitResult->fetch_assoc()) {
-        $unitName = $unitRow['unitname'];
+        $unitName = repairUTF8($unitRow['unitname']);
         
         // Berechne OFFSET für die Vokabeln (max 5 pro Gruppe)
         $offset = ($group - 1) * 5;
@@ -54,22 +86,19 @@ if (isset($_GET['unit']) && isset($_GET['group'])) {
         
         while ($row = $vocabResult->fetch_assoc()) {
             $vocabularyPairs[] = [
-                'german' => $row['german_word'],
-                'english' => $row['english_word'],
+                'german' => repairUTF8($row['german_word']),
+                'english' => repairUTF8($row['english_word']),
                 'gvocabid' => $row['gvocabid'],
                 'evocabid' => $row['evocabid']
             ];
         }
+        $vocabStmt->close();
         
         if (!empty($vocabularyPairs)) {
             $showTest = true;
         }
     }
-} elseif (isset($_GET['unit'])) {
-    // Nur Unit angegeben, starte mit Gruppe 1
-    $unitid = intval($_GET['unit']);
-    header("Location: zuordnen.php?unit=$unitid&group=1");
-    exit;
+    $unitStmt->close();
 }
 
 // Units laden falls nicht im Test-Modus
@@ -89,8 +118,11 @@ if (!$showTest) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
+        // UTF-8 Reparatur für Unit-Namen anwenden
+        $row['unitname'] = repairUTF8($row['unitname']);
         $units[] = $row;
     }
+    $stmt->close();
 }
 ?>
 
@@ -99,11 +131,200 @@ if (!$showTest) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $showTest ? 'Multi-Choice Test - ' . htmlspecialchars($unitName) : 'Multi-Choice - Unit Auswahl'; ?></title>
+    <title><?php echo $showTest ? 'Multi-Choice Test - ' . htmlspecialchars($unitName) : 'SprachApp - MultiChoice'; ?></title>
     <!-- Bootstrap 5 CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        body {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        
+        .navbar {
+            background-color: #0d6efd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .nav-link {
+            font-weight: 600;
+            text-align: center;
+            color: white !important;
+        }
+        
+        .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 2rem 0;
+        }
+        
+        .welcome-box {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid #0d6efd;
+        }
+        
+        .welcome-box h2 {
+            color: #0d6efd;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .unit-card {
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 100%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid #e9ecef;
+            margin-bottom: 1.5rem;
+        }
+        
+        .unit-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .unit-header {
+            background-color: #0d6efd;
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .unit-header h5 {
+            margin: 0;
+            font-weight: bold;
+            font-size: 1.25rem;
+        }
+        
+        .unit-body {
+            padding: 1.5rem;
+        }
+        
+        .btn {
+            border-radius: 4px;
+            font-weight: bold;
+            padding: 0.5rem 1.5rem;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+        }
+        
+        .btn-success {
+            background-color: #198754;
+            border-color: #198754;
+        }
+        
+        .btn-success:hover {
+            background-color: #157347;
+            border-color: #146c43;
+        }
+        
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background-color: #bb2d3b;
+            border-color: #b02a37;
+        }
+        
+        .user-info {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin-right: 1rem;
+            color: white;
+        }
+        
+        .role-badge {
+            background-color: white;
+            color: #0d6efd;
+            font-weight: bold;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+        
+        .logout-btn {
+            background-color: transparent;
+            border: 1px solid white;
+            color: white;
+        }
+        
+        .logout-btn:hover {
+            background-color: white;
+            color: #0d6efd;
+        }
+        
+        footer {
+            margin-top: auto;
+            padding: 1rem 0;
+            background-color: #212529;
+            color: white;
+            text-align: center;
+        }
+        
+        footer a {
+            color: #f8f9fa;
+            text-decoration: none;
+            margin: 0 0.5rem;
+        }
+        
+        footer a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        /* Admin & Teacher sections hidden by default */
+        .admin-section, .teacher-section {
+            display: none;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 767.98px) {
+            .user-info {
+                margin-bottom: 0.5rem;
+                margin-right: 0;
+                display: block;
+                text-align: center;
+            }
+            
+            .logout-btn {
+                display: block;
+                width: 100%;
+                text-align: center;
+                margin-bottom: 0.5rem;
+            }
+        }
+        
         .vocab-card {
             cursor: pointer;
             min-height: 70px;
@@ -138,68 +359,79 @@ if (!$showTest) {
             font-size: 1.2rem;
             font-weight: bold;
         }
-
-        .unit-card {
+        
+        .card {
             background-color: white;
             border-radius: 8px;
             overflow: hidden;
-            height: 100%;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             transition: transform 0.3s, box-shadow 0.3s;
             border: 1px solid #e9ecef;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
         
-        .unit-card:hover {
+        .card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
         }
         
-        .unit-header {
-            background-color: #0d6efd;
-            color: white;
-            padding: 1.5rem;
-            text-align: center;
-        }
-        
-        .unit-header h5 {
-            margin: 0;
-            font-weight: bold;
-            font-size: 1.25rem;
-        }
-        
-        .unit-body {
-            padding: 1.5rem;
-        }
-
-        .welcome-box {
-            background-color: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            border-left: 5px solid #0d6efd;
-        }
-        
-        .welcome-box h2 {
-            color: #0d6efd;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
+        .card-body {
+            padding: 2rem;
         }
     </style>
 </head>
 <body>
-    <?php include 'header.php'; ?>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index2.php">SprachApp</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index2.php">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="einheiten.php">Einheiten</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="miniTest.php">Grammatiktrainer</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="zuordnen.php">MultiChoice</a>
+                    </li>
+                    <li class="nav-item teacher-section">
+                        <a class="nav-link" href="schueler_verwalten.php">Schüler verwalten</a>
+                    </li>
+                    <li class="nav-item admin-section">
+                        <a class="nav-link" href="admin_panel.php">Admin-Panel</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center flex-wrap">
+                    <span class="user-info">
+                        <?php echo htmlspecialchars($username); ?>
+                        <span class="role-badge"><?php echo htmlspecialchars($role); ?></span>
+                    </span>
+                    <a href="logout.php" class="btn logout-btn">Abmelden</a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-    <div class="container py-4">
+    <div class="container content">
         <?php if ($showTest): ?>
             <!-- Test-Modus -->
+            <div class="welcome-box">
+                <h2>Vokabel-Übung</h2>
+                <p>Verbinde die deutschen Wörter mit den entsprechenden englischen Übersetzungen</p>
+            </div>
+            
             <div class="row mb-4">
                 <div class="col-12">
                     <a href="zuordnen.php" class="btn btn-outline-secondary mb-3">← Zurück zur Unit-Auswahl</a>
-                    <h1 class="display-5 mb-3">Vokabel-Übung</h1>
-                    <h3><?php echo htmlspecialchars($unitName); ?> - Gruppe <?php echo $group; ?></h3>
-                    <p class="lead">Verbinde die deutschen Wörter mit den entsprechenden englischen Übersetzungen</p>
+                    <h3><?php echo htmlspecialchars($unitName); ?> - Vokabeln <?php echo ($group - 1) * 5 + 1; ?>-<?php echo ($group - 1) * 5 + count($vocabularyPairs); ?></h3>
                     <div class="alert alert-info" role="alert">
                         Klicke zuerst auf ein deutsches Wort und dann auf die passende englische Übersetzung
                     </div>
@@ -245,21 +477,26 @@ if (!$showTest) {
                     $nextGroup = $group + 1;
                     $nextOffset = ($nextGroup - 1) * 5;
                     
-                    $checkStmt = $conn->prepare("
-                        SELECT COUNT(*) as count
+                    // Zähle alle Vokabeln in der Unit
+                    $totalStmt = $conn->prepare("
+                        SELECT COUNT(*) as total_count
                         FROM vocabgerman vg
                         JOIN vocabmapping vm ON vg.gvocabid = vm.gvocabid
                         JOIN vocabenglish ve ON vm.evocabid = ve.evocabid
                         WHERE vg.unitid = ? AND ve.unitid = ?
-                        LIMIT 5 OFFSET ?
                     ");
-                    $checkStmt->bind_param("iii", $unitid, $unitid, $nextOffset);
-                    $checkStmt->execute();
-                    $checkResult = $checkStmt->get_result();
-                    $hasNextGroup = false;
-                    if ($checkRow = $checkResult->fetch_assoc()) {
-                        $hasNextGroup = $checkRow['count'] > 0;
+                    $totalStmt->bind_param("ii", $unitid, $unitid);
+                    $totalStmt->execute();
+                    $totalResult = $totalStmt->get_result();
+                    $totalVocabs = 0;
+                    if ($totalRow = $totalResult->fetch_assoc()) {
+                        $totalVocabs = $totalRow['total_count'];
                     }
+                    $totalStmt->close();
+                    
+                    // Berechne ob noch weitere Vokabeln vorhanden sind
+                    $currentEndIndex = $group * 5;
+                    $hasNextGroup = $totalVocabs > $currentEndIndex;
                     ?>
                     
                     <button id="restart-btn" class="btn btn-primary btn-lg" onclick="restartGame()">
@@ -273,7 +510,7 @@ if (!$showTest) {
                         </a>
                     <?php else: ?>
                         <a href="zuordnen.php" class="btn btn-success btn-lg ms-2" id="finish-btn" style="display: none;">
-                            Unit abgeschlossen! Neue Unit wählen
+                            Unit abgeschlossen!
                         </a>
                     <?php endif; ?>
                     
@@ -297,44 +534,21 @@ if (!$showTest) {
             <?php else: ?>
                 <div class="row g-4">
                     <?php foreach ($units as $unit): ?>
-                        <?php 
-                        // Berechne wie viele Testgruppen es geben wird (max 10 Vokabeln pro Test)
-                        $testGroups = ceil($unit['vocab_count'] / 10);
-                        ?>
                         <div class="col-md-6 col-lg-4">
                             <div class="unit-card">
                                 <div class="unit-header">
                                     <h5><?php echo htmlspecialchars($unit['unitname']); ?></h5>
                                 </div>
                                 <div class="unit-body">
-                                    <p class="mb-3">
+                                    <p class="mb-4">
                                         <strong><?php echo $unit['vocab_count']; ?></strong> Vokabel<?php echo $unit['vocab_count'] != 1 ? 'n' : ''; ?>
                                     </p>
-                                    <?php if ($testGroups > 1): ?>
-                                        <p class="text-muted mb-3">
-                                            <small>Aufgeteilt in <?php echo $testGroups; ?> Tests (max. 10 Vokabeln pro Test)</small>
-                                        </p>
-                                        
-                                        <?php for ($i = 1; $i <= $testGroups; $i++): ?>
-                                            <?php
-                                            $startVocab = ($i - 1) * 10 + 1;
-                                            $endVocab = min($i * 10, $unit['vocab_count']);
-                                            ?>
-                                            <div class="d-grid mb-2">
-                                                <a href="zuordnen.php?unit=<?php echo $unit['unitid']; ?>&group=<?php echo $i; ?>" 
-                                                   class="btn btn-outline-primary">
-                                                    Test <?php echo $i; ?> (Vokabeln <?php echo $startVocab; ?>-<?php echo $endVocab; ?>)
-                                                </a>
-                                            </div>
-                                        <?php endfor; ?>
-                                    <?php else: ?>
-                                        <div class="d-grid">
-                                            <a href="zuordnen.php?unit=<?php echo $unit['unitid']; ?>&group=1" 
-                                               class="btn btn-primary">
-                                                Test starten
-                                            </a>
-                                        </div>
-                                    <?php endif; ?>
+                                    <div class="d-grid">
+                                        <a href="zuordnen.php?unit=<?php echo $unit['unitid']; ?>" 
+                                           class="btn btn-primary w-100">
+                                            Zuordnen starten
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -343,8 +557,24 @@ if (!$showTest) {
             <?php endif; ?>
         <?php endif; ?>
     </div>
+    
+    <footer>
+        <div class="container">
+            <div class="row py-3">
+                <div class="col-md-6 text-md-start text-center mb-2 mb-md-0">
+                    <p class="mb-0">&copy; 2025 SprachApp. Alle Rechte vorbehalten.</p>
+                </div>
+                <div class="col-md-6 text-md-end text-center">
+                    <a href="#">Datenschutz</a>
+                    <a href="#">Impressum</a>
+                    <a href="#">Kontakt</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 
-    <?php include 'footer.php'; ?>
+    <!-- Bootstrap 5 JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
     <?php if ($showTest): ?>
     <script>
