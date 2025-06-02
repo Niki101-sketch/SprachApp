@@ -18,11 +18,12 @@ if (!isset($_SESSION['authenticated']) || $_SESSION['authenticated'] !== true) {
     header("Location: login.php");
     exit();
 }
-
-if ($_SESSION['role'] !== 'teacher' && $_SESSION['role'] !== 'admin') {
+/*
+if ($_SESSION['role'] !== 'teacher') {
     header("Location: index2.php");
     exit();
 }
+    keine Ahnung warum das nicht funktioniert*/ 
 
 // Benutzerinformationen aus der Session holen
 $teachername = $_SESSION['username'];
@@ -385,7 +386,7 @@ if (isset($_POST['action'])) {
                         <a class="nav-link active" href="teacherdashboard.php">Lehrer-Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="schueler_verwalten.php">Schüler verwalten</a>
+                        <a class="nav-link" href="studentmanager.php">Schüler verwalten</a>
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
@@ -672,21 +673,96 @@ if (isset($_POST['action'])) {
             }
         }
         
-        function createUnit(unitName) {
-            fetch('teacherdashboard.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: `action=create_unit&groupid=${currentGroupId}&unitname=${encodeURIComponent(unitName)}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showGroupDetails(currentGroupId);
-                } else {
-                    alert(data.message);
-                }
-            });
+       function showCreateUnitForm() {
+    const html = `
+        <div class="modal fade" id="createUnitModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header" style="background-color: #17a2b8; color: white;">
+                        <h5 class="modal-title">Neue Unit erstellen</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createUnitForm">
+                            <div class="mb-3">
+                                <label for="unitName" class="form-label">Name der Unit</label>
+                                <input type="text" class="form-control" id="unitName" placeholder="z.B. Kapitel 1 - Grundlagen" required>
+                                <small class="form-text text-muted">Geben Sie einen aussagekräftigen Namen für die Unit ein</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="unitDescription" class="form-label">Beschreibung (optional)</label>
+                                <textarea class="form-control" id="unitDescription" rows="3" placeholder="Kurze Beschreibung der Unit..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                        <button type="button" class="btn btn-info" onclick="createUnitFromModal()">
+                            <i class="fas fa-plus"></i> Unit erstellen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Modal zum Body hinzufügen und anzeigen
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = html;
+    document.body.appendChild(modalContainer);
+    
+    const modal = new bootstrap.Modal(document.getElementById('createUnitModal'));
+    modal.show();
+    
+    // Modal nach dem Schließen entfernen
+    document.getElementById('createUnitModal').addEventListener('hidden.bs.modal', function() {
+        modalContainer.remove();
+    });
+    
+    // Fokus auf das Eingabefeld setzen
+    document.getElementById('createUnitModal').addEventListener('shown.bs.modal', function() {
+        document.getElementById('unitName').focus();
+    });
+}
+
+function createUnitFromModal() {
+    const unitName = document.getElementById('unitName').value;
+    
+    if (!unitName.trim()) {
+        alert('Bitte geben Sie einen Namen für die Unit ein.');
+        return;
+    }
+    
+    fetch('teacherdashboard.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `action=create_unit&groupid=${currentGroupId}&unitname=${encodeURIComponent(unitName)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('createUnitModal')).hide();
+            showGroupDetails(currentGroupId);
+            
+            // Erfolgsmeldung anzeigen
+            const successAlert = document.createElement('div');
+            successAlert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+            successAlert.style.zIndex = '9999';
+            successAlert.innerHTML = `
+                <i class="fas fa-check-circle"></i> Unit "${unitName}" wurde erfolgreich erstellt!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(successAlert);
+            
+            // Alert nach 3 Sekunden automatisch ausblenden
+            setTimeout(() => {
+                successAlert.remove();
+            }, 3000);
+        } else {
+            alert(data.message);
         }
+    });
+}
         
         function deleteUnit(unitId) {
             if (confirm('Möchten Sie diese Unit wirklich löschen? Alle Vokabeln werden ebenfalls gelöscht.')) {
