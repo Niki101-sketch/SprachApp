@@ -1,21 +1,12 @@
 <?php
-// Datenbankverbindung
-include 'connection.php';
+// einheiten.php - Einheiten-Übersicht
+require_once 'config.php';
 
-try {
-    $pdo = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    die("Verbindung fehlgeschlagen: " . $e->getMessage());
-}
+// Benutzerinformationen abrufen
+$userInfo = getUserInfo();
 
-// Session starten für Benutzerinformationen
-session_start();
-
-// Prüfen, ob Benutzer eingeloggt ist
-$isLoggedIn = isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true;
-$username = $isLoggedIn ? $_SESSION['username'] : '';
-$role = $isLoggedIn ? $_SESSION['role'] : '';
+// PDO Datenbankverbindung
+$pdo = getPDOConnection();
 
 // Units aus der Datenbank laden
 $stmt = $pdo->prepare("
@@ -30,298 +21,224 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute();
 $units = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$pageTitle = "SprachApp - Einheiten";
+
+// Header einbinden
+include 'header.php';
 ?>
 
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SprachApp - Einheiten</title>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            font-family: Arial, Helvetica, sans-serif;
-        }
-        
-        .navbar {
-            background-color: #0d6efd;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        .navbar-brand {
-            font-weight: bold;
-            font-size: 1.5rem;
-        }
-        
-        .nav-link {
-            font-weight: 600;
-            text-align: center;
-        }
-        
-        .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-        }
-        
-        .content {
-            flex: 1;
-            padding: 2rem 0;
-        }
-        
-        .welcome-box {
-            background-color: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            border-left: 5px solid #0d6efd;
-        }
-        
-        .welcome-box h2 {
-            color: #0d6efd;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-        
-        .unit-card {
-            background-color: white;
-            border-radius: 8px;
-            overflow: hidden;
-            height: 100%;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: 1px solid #e9ecef;
-            margin-bottom: 1.5rem;
-        }
-        
-        .unit-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .unit-header {
-            background-color: #0d6efd;
-            color: white;
-            padding: 1.5rem;
-            text-align: center;
-        }
-        
-        .unit-header h5 {
-            margin: 0;
-            font-weight: bold;
-            font-size: 1.25rem;
-        }
-        
-        .unit-body {
-            padding: 1.5rem;
-        }
-        
-        .btn {
-            border-radius: 4px;
-            font-weight: bold;
-            padding: 0.5rem 1.5rem;
-            text-align: center;
-        }
-        
-        .btn-primary {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-        }
-        
-        .btn-primary:hover {
-            background-color: #0b5ed7;
-            border-color: #0a58ca;
-        }
-        
-        .user-info {
-            background-color: rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            margin-right: 1rem;
-            color: white;
-        }
-        
-        .role-badge {
-            background-color: white;
-            color: #0d6efd;
-            font-weight: bold;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            margin-left: 0.5rem;
-        }
-        
-        .logout-btn {
-            background-color: transparent;
-            border: 1px solid white;
-            color: white;
-        }
-        
-        .logout-btn:hover {
-            background-color: white;
-            color: #0d6efd;
-        }
-        
-        footer {
-            margin-top: auto;
-            padding: 1rem 0;
-            background-color: #212529;
-            color: white;
-            text-align: center;
-        }
-        
-        footer a {
-            color: #f8f9fa;
-            text-decoration: none;
-            margin: 0 0.5rem;
-        }
-        
-        footer a:hover {
-            color: white;
-            text-decoration: underline;
-        }
-        
-        /* Admin & Teacher sections hidden by default */
-        .admin-section, .teacher-section {
-            display: none;
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 767.98px) {
-            .user-info {
-                margin-bottom: 0.5rem;
-                margin-right: 0;
-                display: block;
-                text-align: center;
-            }
-            
-            .logout-btn {
-                display: block;
-                width: 100%;
-                text-align: center;
-                margin-bottom: 0.5rem;
-            }
-        }
-    </style>
-</head>
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="index2.php">SprachApp</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index2.php">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="einheiten.php">Einheiten</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="miniTest.php">Grammatiktrainer</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="konjugationstrainer.php">MultiChoice</a>
-                    </li>
-                    <li class="nav-item teacher-section">
-                        <a class="nav-link" href="schueler_verwalten.php">Schüler verwalten</a>
-                    </li>
-                    <li class="nav-item admin-section">
-                        <a class="nav-link" href="admin_panel.php">Admin-Panel</a>
-                    </li>
-                </ul>
-                <div class="d-flex align-items-center flex-wrap">
-                    <span class="user-info">
-                        <?php echo htmlspecialchars($username); ?>
-                        <span class="role-badge"><?php echo htmlspecialchars($role); ?></span>
-                    </span>
-                    <a href="logout.php" class="btn logout-btn">Abmelden</a>
-                </div>
-            </div>
-        </div>
-    </nav>
+   
 
-    <div class="container content">
-        <div class="welcome-box">
-            <h2>Verfügbare Units</h2>
-            <p>Wählen Sie eine Unit aus, um mit dem Lernen zu beginnen.</p>
-        </div>
-        
-        <?php if (empty($units)): ?>
-            <div class="alert alert-info" role="alert">
-                Zurzeit sind keine Units verfügbar.
+    <!-- Skip Navigation Link for Accessibility -->
+    <a class="visually-hidden-focusable position-absolute top-0 start-0 p-3 bg-primary text-white text-decoration-none" 
+       href="#main-content">Zum Hauptinhalt springen</a>
+
+    <!-- Main Content Container -->
+    <main id="main-content" role="main">
+        <div class="container content">
+            <div class="welcome-box animate-fade-in">
+                <h2><i class="bi bi-collection me-2"></i>Verfügbare Lerneinheiten</h2>
+                <p>Wählen Sie eine Einheit aus, um mit dem strukturierten Lernen zu beginnen. Jede Einheit enthält thematisch organisierte Vokabeln und Übungen.</p>
             </div>
-        <?php else: ?>
-            <div class="row g-4">
-                <?php foreach ($units as $unit): ?>
-                    <div class="col-md-4">
-                        <div class="unit-card">
-                            <div class="unit-header">
-                                <h5><?php echo htmlspecialchars($unit['unitname']); ?></h5>
+            
+            <?php if (empty($units)): ?>
+                <div class="alert alert-info animate-slide-left" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Keine Einheiten verfügbar</strong><br>
+                    Zurzeit sind keine Lerneinheiten verfügbar. Bitte wenden Sie sich an Ihren Administrator.
+                </div>
+            <?php else: ?>
+                <div class="row g-4">
+                    <?php foreach ($units as $index => $unit): ?>
+                        <div class="col-xl-4 col-lg-6 col-md-6">
+                            <div class="unit-card animate-fade-in" style="animation-delay: <?php echo $index * 0.1; ?>s;">
+                                <div class="unit-header">
+                                    <h5><i class="bi bi-book me-2"></i><?php echo htmlspecialchars($unit['unitname']); ?></h5>
+                                </div>
+                                <div class="unit-body">
+                                    <div class="text-center mb-4">
+                                        <div class="display-6 fw-bold text-primary"><?php echo $unit['vocab_count']; ?></div>
+                                        <p class="text-muted mb-0">
+                                            Vokabel<?php echo $unit['vocab_count'] != 1 ? 'n' : ''; ?> verfügbar
+                                        </p>
+                                    </div>
+                                    
+                                    <div class="progress mb-4" style="height: 8px;">
+                                        <div class="progress-bar bg-success" role="progressbar" 
+                                             style="width: <?php echo min(100, ($unit['vocab_count'] / 50) * 100); ?>%" 
+                                             aria-valuenow="<?php echo $unit['vocab_count']; ?>" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="50">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2">
+                                        <?php if ($unit['vocab_count'] > 0): ?>
+                                            <a href="karteikarten.php?unit=<?php echo $unit['unitid']; ?>" 
+                                               class="btn btn-primary">
+                                                <i class="bi bi-play-fill me-2"></i>Lernen starten
+                                            </a>
+                                            <div class="btn-group" role="group" aria-label="Lernmodi">
+                                                <a href="miniTest.php?unit=<?php echo $unit['unitid']; ?>" 
+                                                   class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-pencil me-1"></i>Test
+                                                </a>
+                                                <a href="zuordnen.php?unit=<?php echo $unit['unitid']; ?>" 
+                                                   class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-check2-circle me-1"></i>Quiz
+                                                </a>
+                                            </div>
+                                        <?php else: ?>
+                                            <button class="btn btn-secondary" disabled>
+                                                <i class="bi bi-exclamation-triangle me-2"></i>Keine Vokabeln
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="unit-body">
-                                <p class="mb-4">
-                                    <?php echo $unit['vocab_count']; ?> Vokabel<?php echo $unit['vocab_count'] != 1 ? 'n' : ''; ?>
-                                </p>
-                                <div class="d-grid">
-                                    <a href="karteikarten.php?unit=<?php echo $unit['unitid']; ?>" class="btn btn-primary w-100">
-                                        Lernen starten
-                                    </a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Statistiken -->
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <div class="card border-0 shadow-lg">
+                            <div class="card-header bg-gradient-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-graph-up me-2"></i>Lern-Statistiken
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <div class="p-3">
+                                            <div class="h3 text-primary fw-bold"><?php echo count($units); ?></div>
+                                            <small class="text-muted">Verfügbare Einheiten</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="p-3">
+                                            <div class="h3 text-success fw-bold">
+                                                <?php echo array_sum(array_column($units, 'vocab_count')); ?>
+                                            </div>
+                                            <small class="text-muted">Gesamt Vokabeln</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="p-3">
+                                            <div class="h3 text-info fw-bold">
+                                                <?php echo round(array_sum(array_column($units, 'vocab_count')) / max(1, count($units))); ?>
+                                            </div>
+                                            <small class="text-muted">Ø Vokabeln pro Einheit</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="p-3">
+                                            <div class="h3 text-warning fw-bold">0%</div>
+                                            <small class="text-muted">Fortschritt gesamt</small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
-    
-    <footer>
-        <div class="container">
-            <div class="row py-3">
-                <div class="col-md-6 text-md-start text-center mb-2 mb-md-0">
-                    <p class="mb-0">&copy; 2025 SprachApp. Alle Rechte vorbehalten.</p>
                 </div>
-                <div class="col-md-6 text-md-end text-center">
-                    <a href="#">Datenschutz</a>
-                    <a href="#">Impressum</a>
-                    <a href="#">Kontakt</a>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
-    </footer>
+    </main>
 
-    <!-- Bootstrap 5 JS Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <?php include 'footer.php'; ?>
+
     <script>
-        // Script zum Anzeigen der rollenspezifischen Bereiche
+        // Zusätzliche JavaScript-Funktionalität für Einheiten
         document.addEventListener('DOMContentLoaded', function() {
-            var role = "<?php echo $role; ?>";
+            // Script zum Anzeigen der rollenspezifischen Bereiche
+            const role = "<?php echo $userInfo['role']; ?>";
             
+            // Lehrer-Bereiche anzeigen
             if (role === 'lehrer' || role === 'admin') {
-                // Lehrer-Bereiche anzeigen
-                var teacherSections = document.querySelectorAll('.teacher-section');
-                for (var i = 0; i < teacherSections.length; i++) {
-                    teacherSections[i].style.display = 'block';
-                }
+                const teacherSections = document.querySelectorAll('.teacher-section');
+                teacherSections.forEach(section => {
+                    section.style.display = 'block';
+                    section.classList.add('animate-fade-in');
+                });
             }
             
+            // Admin-Bereiche anzeigen
             if (role === 'admin') {
-                // Admin-Bereiche anzeigen
-                var adminSections = document.querySelectorAll('.admin-section');
-                for (var i = 0; i < adminSections.length; i++) {
-                    adminSections[i].style.display = 'block';
-                }
+                const adminSections = document.querySelectorAll('.admin-section');
+                adminSections.forEach(section => {
+                    section.style.display = 'block';
+                    section.classList.add('animate-fade-in');
+                });
+            }
+
+            // Hover-Effekte für Unit-Cards
+            const unitCards = document.querySelectorAll('.unit-card');
+            unitCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-8px) scale(1.02)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+
+            // Tooltips für Progress Bars
+            const progressBars = document.querySelectorAll('.progress-bar');
+            progressBars.forEach(bar => {
+                const width = bar.style.width;
+                bar.setAttribute('title', `Fortschritt: ${width}`);
+            });
+
+            // Smooth scroll für interne Links
+            const internalLinks = document.querySelectorAll('a[href^="#"]');
+            internalLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        });
+
+        // Funktion zum Tracken von Unit-Auswahlen
+        function trackUnitSelection(unitId, unitName, action) {
+            console.log(`Unit ${action}: ${unitName} (ID: ${unitId})`);
+            // Hier könnte Analytics-Code eingefügt werden
+            if (typeof gtag !== 'undefined') {
+                gtag('event', action, {
+                    event_category: 'Units',
+                    event_label: unitName,
+                    value: unitId
+                });
+            }
+        }
+
+        // Event Listener für Unit-Links
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('a[href*="karteikarten.php"], a[href*="miniTest.php"], a[href*="zuordnen.php"]');
+            if (link) {
+                const url = new URL(link.href);
+                const unitId = url.searchParams.get('unit');
+                const unitCard = link.closest('.unit-card');
+                const unitName = unitCard ? unitCard.querySelector('h5').textContent.trim() : 'Unknown';
+                
+                let action = 'unknown';
+                if (link.href.includes('karteikarten.php')) action = 'flashcards_start';
+                else if (link.href.includes('miniTest.php')) action = 'test_start';
+                else if (link.href.includes('zuordnen.php')) action = 'quiz_start';
+                
+                trackUnitSelection(unitId, unitName, action);
             }
         });
     </script>
