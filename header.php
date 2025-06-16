@@ -197,12 +197,14 @@ if (!headers_sent()) {
                             <i class="bi bi-check2-circle me-1"></i>MultiChoice
                         </a>
                     </li>
+
                     <li class="nav-item teacher-section" style="display: none;">
-                        <a class="nav-link <?php echo ($currentPage == 'schueler_verwalten') ? 'active' : ''; ?>" 
-                           href="schueler_verwalten.php" aria-current="<?php echo ($currentPage == 'schueler_verwalten') ? 'page' : 'false'; ?>">
-                            <i class="bi bi-people me-1"></i>Schüler verwalten
+                        <a class="nav-link <?php echo ($currentPage == 'teacherdashboard') ? 'active' : ''; ?>" 
+                        href="teacherdashboard.php" aria-current="<?php echo ($currentPage == 'teacherdashboard') ? 'page' : 'false'; ?>">
+                            <i class="bi bi-people me-1"></i>TeacherDashboard
                         </a>
                     </li>
+
                     <li class="nav-item admin-section" style="display: none;">
                         <a class="nav-link <?php echo ($currentPage == 'admin_panel') ? 'active' : ''; ?>" 
                            href="admin_panel.php" aria-current="<?php echo ($currentPage == 'admin_panel') ? 'page' : 'false'; ?>">
