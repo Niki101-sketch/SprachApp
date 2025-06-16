@@ -401,9 +401,7 @@ if (isset($_POST['action'])) {
                 <div class="col-md-4">
                     <label for="groupFilter" class="form-label">Nach Gruppe filtern</label>
                     <select class="form-select" id="groupFilter" onchange="filterStudents()">
-                        <option value="all">Alle Schüler</option>
                         <option value="my">Nur meine Schüler</option>
-                        <option value="unassigned">Ohne Gruppe</option>
                     </select>
                 </div>
                 <div class="col-md-4">
