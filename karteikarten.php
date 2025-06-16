@@ -1,24 +1,18 @@
-<?php 
-session_start(); 
-ini_set('display_errors', 1); 
-ini_set('display_startup_errors', 1); 
-error_reporting(E_ALL); 
-include 'connection.php'; 
-$conn->set_charset("utf8mb4");
+<?php
+// karteikarten.php - Modernes Karteikarten-System mit Speech-to-Text
+require_once 'config.php';
 
-// Get user info - wichtig für die Anzeige im Header
-$username = '';
-if (isset($_SESSION['username'])) {
-    $username = $_SESSION['username'];
-}
+// Benutzerinformationen abrufen
+$userInfo = getUserInfo();
 
-$role = '';
-if (isset($_SESSION['role'])) {
-    $role = $_SESSION['role'];
-}
+// Datenbankverbindung
+$conn = getMySQLiConnection();
 
 $unitid = $_GET['unit']; 
 $studentid = 1; // Fest für Demo 
+
+// Direction Parameter (default: german to english)
+$direction = isset($_GET['direction']) ? $_GET['direction'] : 'de-en';
 
 // Wenn Button geklickt wurde 
 if (isset($_POST['answer']) && isset($_POST['gvocabid']) && isset($_POST['evocabid'])) { 
@@ -33,7 +27,7 @@ if (isset($_POST['answer']) && isset($_POST['gvocabid']) && isset($_POST['evocab
     } 
     if (!$conn->query($sql)) { 
         die("Fehler beim Einfügen: " . $conn->error); 
-    } 
+    }
 }
 
 // Vokabeln holen 
@@ -47,24 +41,6 @@ while($row = $result->fetch_assoc()) {
     $words[] = $row; 
 } 
 
-// Current Position bestimmen
-$current = 0;
-if (isset($_GET['current'])) {
-    $current = $_GET['current'];
-}
-
-// Skip Button behandeln
-if (isset($_POST['skip'])) {
-    $current = 0;
-    if (isset($_POST['current'])) {
-        $current = intval($_POST['current']) + 1;
-    } else {
-        $current = 1;
-    }
-    header("Location: ?unit=$unitid&current=$current");
-    exit;
-}
-
 // Unit-Name holen
 $unitNameSql = "SELECT unitname FROM unit WHERE unitid = $unitid";
 $unitNameResult = $conn->query($unitNameSql);
@@ -72,6 +48,11 @@ $unitName = "";
 if ($unitNameRow = $unitNameResult->fetch_assoc()) {
     $unitName = $unitNameRow['unitname'];
 }
+
+$pageTitle = "SprachApp - Karteikarten";
+
+// Header einbinden
+include 'header.php';
 ?>
 
 <!DOCTYPE html>
@@ -79,342 +60,687 @@ if ($unitNameRow = $unitNameResult->fetch_assoc()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SprachApp - Karteikarten</title>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title><?php echo $pageTitle; ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            font-family: Arial, Helvetica, sans-serif;
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
         }
-        
-        .navbar {
-            background-color: #0d6efd;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+        #flashcard {
+            transition: all 0.3s ease;
+            min-height: 400px;
         }
-        
-        .navbar-brand {
-            font-weight: bold;
-            font-size: 1.5rem;
-            color: white;
+
+        #flashcard.correct {
+            border: 3px solid #28a745;
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.3);
         }
-        
-        .nav-link {
-            font-weight: 600;
-            text-align: center;
-            color: white !important;
+
+        #flashcard.incorrect {
+            border: 3px solid #dc3545;
+            box-shadow: 0 0 20px rgba(220, 53, 69, 0.3);
+            animation: shake 0.5s ease-in-out;
         }
-        
-        .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
         }
-        
-        .content {
-            flex: 1;
-            padding: 2rem 0;
-        }
-        
-        .welcome-box {
-            background-color: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            border-left: 5px solid #0d6efd;
-        }
-        
-        .welcome-box h2 {
-            color: #0d6efd;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-        
-        .card {
-            background-color: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: 1px solid #e9ecef;
-            margin-bottom: 1rem;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .card-body {
-            padding: 2rem;
-        }
-        
+
         .btn {
-            border-radius: 4px;
-            font-weight: bold;
-            padding: 0.5rem 1.5rem;
-            text-align: center;
+            transition: all 0.2s ease;
+            border-radius: 10px;
         }
-        
-        .btn-primary {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
+
+        .btn:hover {
+            transform: translateY(-2px);
         }
-        
-        .btn-primary:hover {
-            background-color: #0b5ed7;
-            border-color: #0a58ca;
+
+        #listenBtn.recording {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            animation: pulse 1s infinite;
         }
-        
-        .btn-success {
-            background-color: #198754;
-            border-color: #198754;
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
         }
-        
-        .btn-success:hover {
-            background-color: #157347;
-            border-color: #146c43;
+
+        .card {
+            border-radius: 15px;
+            overflow: hidden;
         }
-        
-        .btn-danger {
-            background-color: #dc3545;
-            border-color: #dc3545;
+
+        .alert {
+            border-radius: 10px;
+            border: none;
         }
-        
-        .btn-danger:hover {
-            background-color: #bb2d3b;
-            border-color: #b02a37;
+
+        .card-flip-out {
+            animation: flipOut 0.3s ease-in;
         }
-        
-        .user-info {
-            background-color: rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            margin-right: 1rem;
-            color: white;
+
+        .card-flip-in {
+            animation: flipIn 0.3s ease-out;
         }
-        
-        .role-badge {
-            background-color: white;
-            color: #0d6efd;
-            font-weight: bold;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            margin-left: 0.5rem;
+
+        @keyframes flipOut {
+            from { transform: rotateY(0deg); opacity: 1; }
+            to { transform: rotateY(90deg); opacity: 0; }
         }
-        
-        .logout-btn {
-            background-color: transparent;
-            border: 1px solid white;
-            color: white;
+
+        @keyframes flipIn {
+            from { transform: rotateY(90deg); opacity: 0; }
+            to { transform: rotateY(0deg); opacity: 1; }
         }
-        
-        .logout-btn:hover {
-            background-color: white;
-            color: #0d6efd;
-        }
-        
-        footer {
-            margin-top: auto;
-            padding: 1rem 0;
-            background-color: #212529;
-            color: white;
-            text-align: center;
-        }
-        
-        footer a {
-            color: #f8f9fa;
-            text-decoration: none;
-            margin: 0 0.5rem;
-        }
-        
-        footer a:hover {
-            color: white;
-            text-decoration: underline;
-        }
-        
-        /* Admin & Teacher sections hidden by default */
-        .admin-section, .teacher-section {
-            display: none;
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 767.98px) {
-            .user-info {
-                margin-bottom: 0.5rem;
-                margin-right: 0;
-                display: block;
-                text-align: center;
+
+        @media (max-width: 768px) {
+            #questionWord {
+                font-size: 2rem !important;
             }
             
-            .logout-btn {
-                display: block;
-                width: 100%;
-                text-align: center;
-                margin-bottom: 0.5rem;
+            .btn-lg {
+                padding: 0.75rem 1rem;
+                font-size: 1rem;
+            }
+            
+            .card-body {
+                padding: 2rem 1.5rem !important;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+
+<div class="container-fluid vh-100 d-flex flex-column">
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="index2.php">SprachApp</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index2.php">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="einheiten.php">Einheiten</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="miniTest.php">Grammatiktrainer</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="konjugationstrainer.php">MultiChoice</a>
-                    </li>
-                    <li class="nav-item teacher-section">
-                        <a class="nav-link" href="schueler_verwalten.php">Schüler verwalten</a>
-                    </li>
-                    <li class="nav-item admin-section">
-                        <a class="nav-link" href="admin_panel.php">Admin-Panel</a>
-                    </li>
-                </ul>
-                <div class="d-flex align-items-center flex-wrap">
-                    <span class="user-info">
-                        <?php echo htmlspecialchars($username); ?>
-                        <span class="role-badge"><?php echo htmlspecialchars($role); ?></span>
-                    </span>
-                    <a href="logout.php" class="btn logout-btn">Abmelden</a>
-                </div>
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-book me-2"></i>Vokabel Trainer - <?php echo htmlspecialchars($unitName); ?>
+            </span>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-link text-white">
+                    <i class="bi bi-card-text me-1"></i>
+                    Karte <span id="currentCard">1</span> von <span id="totalCards"><?php echo count($words); ?></span>
+                </span>
             </div>
         </div>
     </nav>
 
-    <div class="container content">
-        <div class="welcome-box">
-            <h2>Karteikarten</h2>
-            <p>Lernen Sie Vokabeln mit Karteikarten. Drehen Sie die Karte um und bewerten Sie, ob Sie die Antwort richtig wussten.</p>
-        </div>
-        
-        <div class="row mb-4">
-            <div class="col-12">
-                <a href="einheiten.php" class="btn btn-outline-secondary mb-3">← Zurück zur Unit-Auswahl</a>
-                <h3>Unit <?php echo $unitid; ?>: <?php echo htmlspecialchars($unitName); ?></h3>
-                
-                <?php 
-                // Prüfen ob noch Vokabeln da sind und current kleiner als Anzahl
-                $hasWordsLeft = false;
-                if (!empty($words) && $current < count($words)) {
-                    $hasWordsLeft = true;
-                }
-                
-                if ($hasWordsLeft) { 
-                ?>
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <div class="mb-4">
-                                <span class="text-muted">Karte <?php echo ($current + 1); ?> von <?php echo count($words); ?></span>
-                            </div>
-                            
-                        <?php 
-                        // Prüfen ob "show" Button geklickt wurde
-                        $showAnswer = false;
-                        if (isset($_POST['show'])) {
-                            $showAnswer = true;
-                        }
-                        
-                        if (!$showAnswer) { 
-                        ?>
-                            <h2 class="mb-4"><?php echo htmlspecialchars($words[$current]['german_word']); ?></h2>
-                            <form method="post">
-                                <button type="submit" name="show" class="btn btn-primary">Umdrehen</button>
-                                <button type="submit" name="skip" value="1" class="btn btn-secondary mx-2">Überspringen</button>
-                                <input type="hidden" name="current" value="<?php echo $current; ?>">
-                            </form>
-                        <?php 
-                        } else { 
-                        ?>
-                            <h2 class="mb-4"><?php echo htmlspecialchars($words[$current]['english_word']); ?></h2>
-                            <form method="post" action="?unit=<?php echo $unitid; ?>&current=<?php echo $current + 1; ?>">
-                                <button type="submit" name="answer" value="right" class="btn btn-success mx-2">Richtig gewusst</button>
-                                <button type="submit" name="answer" value="wrong" class="btn btn-danger mx-2">Falsch gewusst</button>
-                                <input type="hidden" name="gvocabid" value="<?php echo $words[$current]['gvocabid']; ?>">
-                                <input type="hidden" name="evocabid" value="<?php echo $words[$current]['evocabid']; ?>">
-                            </form>
-                        <?php 
-                        } 
-                        ?>
-                        </div>
-                    </div>
-                <?php 
-                } else { 
-                ?>
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h4 class="mb-4">Keine Vokabeln mehr!</h4>
-                            <p>Sie haben alle Karteikarten dieser Einheit durchgearbeitet.</p>
-                            <div class="mt-4">
-                                <a href="einheiten.php" class="btn btn-primary mx-2">Zurück zur Übersicht</a>
-                                <a href="?unit=<?php echo $unitid; ?>&current=0" class="btn btn-secondary mx-2">Von vorne beginnen</a>
-                            </div>
-                        </div>
-                    </div>
-                <?php 
-                } 
-                ?>
+    <!-- Direction Toggle -->
+    <div class="container mt-3">
+        <div class="row justify-content-center">
+            <div class="col-auto">
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="direction" id="de-en" value="de-en" <?php echo $direction == 'de-en' ? 'checked' : ''; ?>>
+                    <label class="btn btn-outline-primary" for="de-en">Deutsch → Englisch</label>
+
+                    <input type="radio" class="btn-check" name="direction" id="en-de" value="en-de" <?php echo $direction == 'en-de' ? 'checked' : ''; ?>>
+                    <label class="btn btn-outline-primary" for="en-de">Englisch → Deutsch</label>
+                </div>
             </div>
         </div>
     </div>
-    
-    <footer>
-        <div class="container">
-            <div class="row py-3">
-                <div class="col-md-6 text-md-start text-center mb-2 mb-md-0">
-                    <p class="mb-0">&copy; 2025 SprachApp. Alle Rechte vorbehalten.</p>
+
+    <!-- Main Content -->
+    <div class="container flex-grow-1 d-flex align-items-center justify-content-center py-4">
+        <div class="row w-100 justify-content-center">
+            <div class="col-lg-8 col-xl-6">
+                
+                <?php if (!empty($words)) { ?>
+                <!-- Karteikarte -->
+                <div id="flashcard" class="card shadow-lg border-0 mb-4">
+                    <div class="card-header bg-gradient text-white text-center py-3">
+                        <h4 class="mb-0" id="cardHeader">
+                            <i class="bi bi-translate me-2"></i>
+                            <span id="headerText">Spreche das englische Wort aus</span>
+                        </h4>
+                    </div>
+                    
+                    <div class="card-body text-center p-5">
+                        <!-- Frage Vokabel -->
+                        <div class="mb-4">
+                            <h2 id="questionWord" class="display-4 fw-bold text-primary mb-3">
+                                Laden...
+                            </h2>
+                        </div>
+
+                        <!-- Speech Recognition Status -->
+                        <div id="speechStatus" class="alert alert-info mb-4">
+                            <i class="bi bi-mic me-2"></i>
+                            Bereit für Spracherkennung
+                        </div>
+
+                        <!-- Erkannter Text -->
+                        <div id="recognizedText" class="mb-4" style="display: none;">
+                            <h5>Erkannt:</h5>
+                            <p class="fs-4 fw-bold" id="spokenText"></p>
+                        </div>
+
+                        <!-- Antwort (versteckt) -->
+                        <div id="answerTranslation" class="mb-4" style="display: none;">
+                            <div class="alert alert-success">
+                                <h5 class="mb-2">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    Richtige Antwort:
+                                </h5>
+                                <p class="fs-4 fw-bold mb-0" id="answerWord"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="card-footer bg-light p-4">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <button id="listenBtn" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-mic-fill me-2"></i>
+                                    Sprechen
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button id="showAnswerBtn" class="btn btn-outline-secondary btn-lg w-100">
+                                    <i class="bi bi-eye me-2"></i>
+                                    Antwort zeigen
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button id="correctBtn" class="btn btn-success btn-lg w-100" style="display: none;">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    Gewusst
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button id="wrongBtn" class="btn btn-danger btn-lg w-100" style="display: none;">
+                                    <i class="bi bi-x-circle me-2"></i>
+                                    Nicht gewusst
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6 text-md-end text-center">
-                    <a href="#">Datenschutz</a>
-                    <a href="#">Impressum</a>
-                    <a href="#">Kontakt</a>
+
+                <!-- Fortschritt -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted">Fortschritt</small>
+                            <small class="text-muted">
+                                <span id="correctCount">0</span> richtig, 
+                                <span id="wrongCount">0</span> falsch
+                            </small>
+                        </div>
+                        <div class="progress">
+                            <div id="progressBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
                 </div>
+
+                <?php } else { ?>
+                <!-- Keine Vokabeln -->
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h4 class="mb-4">Keine Vokabeln gefunden!</h4>
+                        <p>Für diese Einheit sind keine Vokabeln verfügbar.</p>
+                        <a href="einheiten.php" class="btn btn-primary">Zurück zur Übersicht</a>
+                    </div>
+                </div>
+                <?php } ?>
+
             </div>
         </div>
-    </footer>
+    </div>
+</div>
 
-    <!-- Bootstrap 5 JS Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Erfolgs Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-trophy me-2"></i>
+                    Gratulation!
+                </h5>
+            </div>
+            <div class="modal-body text-center">
+                <h4>Du hast alle Vokabeln durchgearbeitet!</h4>
+                <p class="mb-0">
+                    <strong id="finalScore"></strong>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" onclick="restartCards()">
+                    <i class="bi bi-arrow-clockwise me-2"></i>
+                    Nochmal lernen
+                </button>
+                <a href="einheiten.php" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zurück zur Übersicht
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// PHP Daten in JavaScript übertragen
+const vocabularyData = <?php echo json_encode($words); ?>;
+const unitId = <?php echo $unitid; ?>;
+
+// Globale Variablen
+let currentWords = [];
+let currentIndex = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let recognition = null;
+let isListening = false;
+let currentDirection = '<?php echo $direction; ?>';
+let currentAnswer = '';
+let showingAnswer = false;
+
+// DOM Elemente
+const elements = {
+    questionWord: document.getElementById('questionWord'),
+    answerWord: document.getElementById('answerWord'),
+    speechStatus: document.getElementById('speechStatus'),
+    recognizedText: document.getElementById('recognizedText'),
+    spokenText: document.getElementById('spokenText'),
+    answerTranslation: document.getElementById('answerTranslation'),
+    flashcard: document.getElementById('flashcard'),
+    listenBtn: document.getElementById('listenBtn'),
+    showAnswerBtn: document.getElementById('showAnswerBtn'),
+    correctBtn: document.getElementById('correctBtn'),
+    wrongBtn: document.getElementById('wrongBtn'),
+    currentCard: document.getElementById('currentCard'),
+    correctCountEl: document.getElementById('correctCount'),
+    wrongCountEl: document.getElementById('wrongCount'),
+    progressBar: document.getElementById('progressBar'),
+    finalScore: document.getElementById('finalScore'),
+    headerText: document.getElementById('headerText')
+};
+
+// Speech Recognition Setup
+function initSpeechRecognition() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+        showBrowserWarning();
+        return false;
+    }
     
-    <script>
-        // Script zum Anzeigen der rollenspezifischen Bereiche
-        document.addEventListener('DOMContentLoaded', function() {
-            var role = "<?php echo $role; ?>";
+    try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = currentDirection === 'de-en' ? 'en-US' : 'de-DE';
+        recognition.maxAlternatives = 1;
+        
+        recognition.onstart = function() {
+            isListening = true;
+            elements.listenBtn.classList.add('recording');
+            elements.listenBtn.innerHTML = '<i class="bi bi-mic-fill me-2"></i>Spreche jetzt...';
+            elements.speechStatus.className = 'alert alert-warning';
+            elements.speechStatus.innerHTML = '<i class="bi bi-mic me-2"></i>Höre zu... (5 Sekunden)';
             
-            if (role === 'lehrer' || role === 'admin') {
-                // Lehrer-Bereiche anzeigen
-                var teacherSections = document.querySelectorAll('.teacher-section');
-                for (var i = 0; i < teacherSections.length; i++) {
-                    teacherSections[i].style.display = 'block';
+            setTimeout(() => {
+                if (isListening && recognition) {
+                    recognition.stop();
                 }
+            }, 5000);
+        };
+        
+        recognition.onresult = function(event) {
+            const spokenText = event.results[0][0].transcript.toLowerCase().trim();
+            const confidence = event.results[0][0].confidence || 0;
+            
+            elements.spokenText.textContent = `${spokenText} (${Math.round(confidence * 100)}%)`;
+            elements.recognizedText.style.display = 'block';
+            
+            checkAnswer(spokenText);
+        };
+        
+        recognition.onend = function() {
+            isListening = false;
+            elements.listenBtn.classList.remove('recording');
+            elements.listenBtn.innerHTML = '<i class="bi bi-mic-fill me-2"></i>Sprechen';
+        };
+        
+        recognition.onerror = function(event) {
+            isListening = false;
+            elements.listenBtn.classList.remove('recording');
+            elements.listenBtn.innerHTML = '<i class="bi bi-mic-fill me-2"></i>Sprechen';
+            
+            let errorMessage = 'Unbekannter Fehler';
+            switch(event.error) {
+                case 'not-allowed':
+                    errorMessage = 'Mikrofon-Zugriff verweigert.';
+                    break;
+                case 'no-speech':
+                    errorMessage = 'Keine Sprache erkannt.';
+                    break;
+                case 'audio-capture':
+                    errorMessage = 'Mikrofon nicht verfügbar.';
+                    break;
+                case 'network':
+                    errorMessage = 'Netzwerkfehler.';
+                    break;
             }
             
-            if (role === 'admin') {
-                // Admin-Bereiche anzeigen
-                var adminSections = document.querySelectorAll('.admin-section');
-                for (var i = 0; i < adminSections.length; i++) {
-                    adminSections[i].style.display = 'block';
-                }
+            elements.speechStatus.className = 'alert alert-danger';
+            elements.speechStatus.innerHTML = `<i class="bi bi-exclamation-triangle me-2"></i>${errorMessage}`;
+        };
+        
+        return true;
+        
+    } catch (error) {
+        showBrowserWarning();
+        return false;
+    }
+}
+
+function showBrowserWarning() {
+    elements.speechStatus.className = 'alert alert-warning';
+    elements.speechStatus.innerHTML = `
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Browser nicht unterstützt</strong><br>
+        <small>Bitte verwende Chrome, Edge oder Opera für die Spracherkennung.</small>
+    `;
+    elements.listenBtn.disabled = true;
+}
+
+// Antwort überprüfen
+function checkAnswer(spokenText) {
+    const correctAnswer = currentAnswer.toLowerCase();
+    const similarity = calculateSimilarity(spokenText, correctAnswer);
+    
+    if (similarity > 0.7) {
+        showCorrectFeedback();
+    } else {
+        showIncorrectFeedback();
+    }
+}
+
+function showCorrectFeedback() {
+    elements.flashcard.classList.add('correct');
+    elements.speechStatus.className = 'alert alert-success';
+    elements.speechStatus.innerHTML = '<i class="bi bi-check-circle me-2"></i>Richtig! Gut gemacht!';
+    showAnswerButtons();
+}
+
+function showIncorrectFeedback() {
+    elements.flashcard.classList.add('incorrect');
+    elements.speechStatus.className = 'alert alert-danger';
+    elements.speechStatus.innerHTML = '<i class="bi bi-x-circle me-2"></i>Fast! Versuche es nochmal oder zeige die Antwort.';
+    
+    setTimeout(() => {
+        elements.flashcard.classList.remove('incorrect');
+        resetForRetry();
+    }, 2000);
+}
+
+function resetForRetry() {
+    elements.speechStatus.className = 'alert alert-info';
+    elements.speechStatus.innerHTML = '<i class="bi bi-mic me-2"></i>Bereit für Spracherkennung';
+}
+
+// Ähnlichkeitsberechnung
+function calculateSimilarity(str1, str2) {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const distance = levenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+}
+
+function levenshteinDistance(str1, str2) {
+    const matrix = [];
+    
+    for (let i = 0; i <= str2.length; i++) {
+        matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= str1.length; j++) {
+        matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= str2.length; i++) {
+        for (let j = 1; j <= str1.length; j++) {
+            if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j] + 1
+                );
             }
+        }
+    }
+    
+    return matrix[str2.length][str1.length];
+}
+
+// Karte laden
+function loadCurrentCard() {
+    if (currentIndex >= currentWords.length) {
+        showCompletionModal();
+        return;
+    }
+    
+    const vocab = currentWords[currentIndex];
+    showingAnswer = false;
+    
+    // Richtung bestimmen
+    let questionText, answerText;
+    if (currentDirection === 'de-en') {
+        questionText = vocab.german_word;
+        answerText = vocab.english_word;
+        elements.headerText.textContent = 'Spreche das englische Wort aus';
+        if (recognition) recognition.lang = 'en-US';
+    } else {
+        questionText = vocab.english_word;
+        answerText = vocab.german_word;
+        elements.headerText.textContent = 'Spreche das deutsche Wort aus';
+        if (recognition) recognition.lang = 'de-DE';
+    }
+    
+    currentAnswer = answerText;
+    
+    // UI zurücksetzen
+    elements.flashcard.classList.remove('correct', 'incorrect');
+    elements.questionWord.textContent = questionText;
+    elements.answerWord.textContent = answerText;
+    elements.answerTranslation.style.display = 'none';
+    elements.recognizedText.style.display = 'none';
+    
+    // Buttons zurücksetzen
+    elements.showAnswerBtn.style.display = 'block';
+    elements.listenBtn.disabled = false;
+    hideAnswerButtons();
+    
+    // Status zurücksetzen
+    elements.speechStatus.className = 'alert alert-info';
+    elements.speechStatus.innerHTML = '<i class="bi bi-mic me-2"></i>Bereit für Spracherkennung';
+    
+    // UI aktualisieren
+    elements.currentCard.textContent = currentIndex + 1;
+    updateProgress();
+}
+
+function showAnswer() {
+    elements.answerTranslation.style.display = 'block';
+    showAnswerButtons();
+    showingAnswer = true;
+}
+
+function showAnswerButtons() {
+    elements.showAnswerBtn.style.display = 'none';
+    elements.correctBtn.style.display = 'block';
+    elements.wrongBtn.style.display = 'block';
+    elements.listenBtn.disabled = true;
+}
+
+function hideAnswerButtons() {
+    elements.correctBtn.style.display = 'none';
+    elements.wrongBtn.style.display = 'none';
+}
+
+// Antwort verarbeiten
+function handleAnswer(isCorrect) {
+    const vocab = currentWords[currentIndex];
+    
+    // AJAX Request an Server
+    fetch('', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'answer': isCorrect ? 'right' : 'wrong',
+            'gvocabid': vocab.gvocabid,
+            'evocabid': vocab.evocabid
+        })
+    });
+    
+    // Statistiken aktualisieren
+    if (isCorrect) {
+        correctCount++;
+        if (!showingAnswer) { // Nur wenn durch Sprache erkannt
+            elements.flashcard.classList.add('correct');
+        }
+    } else {
+        wrongCount++;
+    }
+    
+    updateStats();
+    
+    // Nächste Karte nach kurzer Verzögerung
+    setTimeout(() => {
+        nextCard();
+    }, 1000);
+}
+
+function nextCard() {
+    currentIndex++;
+    
+    // Animation
+    elements.flashcard.classList.add('card-flip-out');
+    setTimeout(() => {
+        loadCurrentCard();
+        elements.flashcard.classList.remove('card-flip-out');
+        elements.flashcard.classList.add('card-flip-in');
+        setTimeout(() => {
+            elements.flashcard.classList.remove('card-flip-in');
+        }, 300);
+    }, 300);
+}
+
+// Statistiken und Fortschritt
+function updateStats() {
+    elements.correctCountEl.textContent = correctCount;
+    elements.wrongCountEl.textContent = wrongCount;
+}
+
+function updateProgress() {
+    const progress = (currentIndex / currentWords.length) * 100;
+    elements.progressBar.style.width = progress + '%';
+}
+
+// Abschluss Modal
+function showCompletionModal() {
+    const total = correctCount + wrongCount;
+    const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    elements.finalScore.innerHTML = `
+        Du hast <strong>${correctCount}</strong> von <strong>${currentWords.length}</strong> Vokabeln richtig beantwortet!<br>
+        <small class="text-muted">Genauigkeit: ${accuracy}%</small>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('successModal'));
+    modal.show();
+}
+
+// Neustart
+function restartCards() {
+    currentIndex = 0;
+    correctCount = 0;
+    wrongCount = 0;
+    currentWords = shuffleArray([...vocabularyData]);
+    updateStats();
+    loadCurrentCard();
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('successModal'));
+    if (modal) modal.hide();
+}
+
+// Array mischen
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    if (vocabularyData.length === 0) {
+        return;
+    }
+    
+    // Speech Recognition initialisieren
+    initSpeechRecognition();
+    
+    // Daten vorbereiten
+    currentWords = shuffleArray([...vocabularyData]);
+    
+    // Event Listeners
+    elements.listenBtn.addEventListener('click', function() {
+        if (recognition && !isListening) {
+            recognition.start();
+        }
+    });
+    
+    elements.showAnswerBtn.addEventListener('click', showAnswer);
+    elements.correctBtn.addEventListener('click', () => handleAnswer(true));
+    elements.wrongBtn.addEventListener('click', () => handleAnswer(false));
+    
+    // Direction Toggle
+    document.querySelectorAll('input[name="direction"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const newDirection = this.value;
+            window.location.href = `?unit=${unitId}&direction=${newDirection}`;
         });
-    </script>
+    });
+    
+    // Erste Karte laden
+    loadCurrentCard();
+});
+
+// Global verfügbare Funktionen
+window.restartCards = restartCards;
+</script>
+
 </body>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
 </html>
+
+
+<?php include 'footer.php'; ?>
