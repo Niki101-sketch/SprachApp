@@ -1,0 +1,510 @@
+/* ================================================
+   Icon Fix CSS - Umfassende Lösung für Icons
+   ================================================ */
+
+/* Force load Bootstrap Icons from multiple CDNs */
+@import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css');
+
+/* Font Awesome als Backup */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
+
+/* Basis Icon Styling - GRÖßERE ICONS */
+[class*="bi-"], [class*="fa-"], .icon {
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    line-height: 1;
+    font-size: 1.2em !important; /* Größere Standard-Größe */
+    min-width: 1.2em;
+    min-height: 1.2em;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Spezielle Größen für verschiedene Kontexte */
+.navbar-brand [class*="bi-"], .navbar-brand [class*="fa-"] {
+    font-size: 1.8em !important;
+    margin-right: 0.3em;
+}
+
+.nav-link [class*="bi-"], .nav-link [class*="fa-"] {
+    font-size: 1.3em !important;
+    margin-right: 0.4em;
+    vertical-align: middle;
+}
+
+.btn [class*="bi-"], .btn [class*="fa-"] {
+    font-size: 1.1em !important;
+    margin-right: 0.3em;
+}
+
+.role-badge [class*="bi-"], .role-badge [class*="fa-"] {
+    font-size: 1em !important;
+    margin-right: 0.2em;
+}
+
+/* GROSSE Unicode Fallbacks für alle Icons */
+.bi-translate::before, .fa-language::before { 
+    content: "🌍"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-house-door::before, .fa-home::before { 
+    content: "🏠"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-collection::before, .fa-th-large::before { 
+    content: "📚"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-pencil-square::before, .fa-edit::before { 
+    content: "✏️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-check2-circle::before, .fa-check-circle::before { 
+    content: "✅"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-people::before, .fa-users::before { 
+    content: "👥"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-gear::before, .fa-cog::before { 
+    content: "⚙️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-person-circle::before, .fa-user-circle::before { 
+    content: "👤"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-mortarboard::before, .fa-graduation-cap::before { 
+    content: "🎓"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-person-workspace::before, .fa-chalkboard-teacher::before { 
+    content: "👨‍🏫"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-shield-check::before, .fa-shield-alt::before { 
+    content: "🛡️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-box-arrow-right::before, .fa-sign-out-alt::before { 
+    content: "🚪"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-arrow-up::before, .fa-arrow-up::before { 
+    content: "⬆️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-star::before, .fa-star::before { 
+    content: "⭐"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-info-circle::before, .fa-info-circle::before { 
+    content: "ℹ️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-envelope::before, .fa-envelope::before { 
+    content: "✉️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-box-arrow-in-right::before, .fa-sign-in-alt::before { 
+    content: "🔑"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-person-plus::before, .fa-user-plus::before { 
+    content: "➕👤"; 
+    font-size: 1.3em !important;
+    display: inline-block;
+    width: 1.3em;
+    text-align: center;
+}
+
+.bi-rocket-takeoff::before, .fa-rocket::before { 
+    content: "🚀"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-book::before, .fa-book::before { 
+    content: "📖"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-play-fill::before, .fa-play::before { 
+    content: "▶️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-eye::before, .fa-eye::before { 
+    content: "👁️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-eye-slash::before, .fa-eye-slash::before { 
+    content: "🙈"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-lock::before, .fa-lock::before { 
+    content: "🔒"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-key::before, .fa-key::before { 
+    content: "🔑"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-send::before, .fa-paper-plane::before { 
+    content: "📤"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-arrow-left::before, .fa-arrow-left::before { 
+    content: "⬅️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-exclamation-triangle::before, .fa-exclamation-triangle::before { 
+    content: "⚠️"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-check-circle::before, .bi-check-circle-fill::before { 
+    content: "✅"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+.bi-x-circle::before { 
+    content: "❌"; 
+    font-size: 1.4em !important;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+/* Zusätzliche Icons */
+.bi-lightning-charge::before { content: "⚡"; font-size: 1.4em !important; }
+.bi-headset::before { content: "🎧"; font-size: 1.4em !important; }
+.bi-graph-up-arrow::before { content: "📈"; font-size: 1.4em !important; }
+.bi-trophy::before, .bi-trophy-fill::before { content: "🏆"; font-size: 1.4em !important; }
+.bi-collection-fill::before { content: "📋"; font-size: 1.4em !important; }
+.bi-mortarboard-fill::before { content: "🎓"; font-size: 1.4em !important; }
+
+/* CSS-basierte Icons als Alternative */
+.css-icon {
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    position: relative;
+    vertical-align: middle;
+    margin-right: 0.3em;
+}
+
+/* Haus Icon */
+.css-icon-home {
+    background: currentColor;
+    clip-path: polygon(50% 0%, 0% 60%, 20% 60%, 20% 100%, 80% 100%, 80% 60%, 100% 60%);
+}
+
+/* Plus Icon */
+.css-icon-plus {
+    background: currentColor;
+    border-radius: 2px;
+}
+
+.css-icon-plus::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 80%;
+    background: white;
+}
+
+.css-icon-plus::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 3px;
+    background: white;
+}
+
+/* Gear Icon */
+.css-icon-gear {
+    border: 3px solid currentColor;
+    border-radius: 20%;
+    background: transparent;
+}
+
+.css-icon-gear::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40%;
+    height: 40%;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+}
+
+/* Arrow Icons */
+.css-icon-arrow-up {
+    background: currentColor;
+    clip-path: polygon(50% 0%, 0% 50%, 30% 50%, 30% 100%, 70% 100%, 70% 50%, 100% 50%);
+}
+
+.css-icon-arrow-left {
+    background: currentColor;
+    clip-path: polygon(0% 50%, 50% 0%, 50% 30%, 100% 30%, 100% 70%, 50% 70%, 50% 100%);
+}
+
+/* Check Icon */
+.css-icon-check {
+    border: 3px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.css-icon-check::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.8em;
+    color: currentColor;
+    font-weight: bold;
+}
+
+/* Text-basierte Icons mit besserer Formatierung */
+.text-icon {
+    display: inline-block;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    font-size: 0.7em !important;
+    font-weight: bold;
+    min-width: 2em;
+    text-align: center;
+    margin-right: 0.3em;
+    vertical-align: middle;
+}
+
+.text-icon-home::before { content: "HOME"; }
+.text-icon-book::before { content: "BOOK"; }
+.text-icon-test::before { content: "TEST"; }
+.text-icon-quiz::before { content: "QUIZ"; }
+.text-icon-user::before { content: "USER"; }
+.text-icon-admin::before { content: "ADMIN"; }
+.text-icon-logout::before { content: "EXIT"; }
+
+/* Responsive Icon Größen */
+@media (max-width: 768px) {
+    [class*="bi-"], [class*="fa-"], .icon {
+        font-size: 1.4em !important;
+    }
+    
+    .navbar-brand [class*="bi-"], .navbar-brand [class*="fa-"] {
+        font-size: 2em !important;
+    }
+    
+    .nav-link [class*="bi-"], .nav-link [class*="fa-"] {
+        font-size: 1.5em !important;
+        margin-right: 0.5em;
+    }
+}
+
+@media (max-width: 480px) {
+    [class*="bi-"], [class*="fa-"], .icon {
+        font-size: 1.6em !important;
+    }
+    
+    .navbar-brand [class*="bi-"], .navbar-brand [class*="fa-"] {
+        font-size: 2.2em !important;
+    }
+}
+
+/* Force größere Icons in Navigation */
+.navbar [class*="bi-"], .navbar [class*="fa-"] {
+    font-size: 1.5em !important;
+    min-width: 1.5em;
+    display: inline-block;
+    text-align: center;
+}
+
+/* Loading Animation für Icons */
+.icon-loading {
+    animation: iconSpin 2s linear infinite;
+}
+
+@keyframes iconSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* High Contrast für bessere Sichtbarkeit */
+@media (prefers-contrast: high) {
+    [class*="bi-"]::before, [class*="fa-"]::before {
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        font-weight: bold;
+    }
+}
+
+/* Debug-Hilfe: Alle Icons rot markieren um zu sehen welche geladen sind */
+.debug-icons [class*="bi-"], .debug-icons [class*="fa-"] {
+    background: rgba(255, 0, 0, 0.2);
+    border: 1px solid red;
+}
+
+/* Fallback wenn gar nichts funktioniert */
+.icon-fallback::before {
+    content: "■";
+    font-size: 1.2em !important;
+    color: currentColor;
+    display: inline-block;
+    width: 1.2em;
+    text-align: center;
+}
+
+/* Spezielle Fixes für häufig genutzte Icons */
+.navbar-brand .bi-translate {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif !important;
+}
+
+/* Backup SVG Icons als Data URLs */
+.svg-icon-home {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L2 8.207V13.5A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V8.207l.646.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.707 1.5ZM13 7.207V13.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V7.207l5-5 5 5Z'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    width: 1.2em;
+    height: 1.2em;
+    display: inline-block;
+}
+
+/* Icon Container für perfekte Ausrichtung */
+.icon-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em;
+    height: 1.5em;
+    margin-right: 0.5em;
+    font-size: 1.2em;
+    vertical-align: middle;
+}
+
+/* Emoji Font Stack für bessere Emoji-Darstellung */
+[class*="bi-"]::before, [class*="fa-"]::before {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", "EmojiSymbols", sans-serif !important;
+}
