@@ -34,30 +34,7 @@ $role = $_SESSION['role'];
 if (isset($_POST['action'])) {
     header('Content-Type: application/json');
     
-    switch ($_POST['action']) {
-        case 'get_all_students':
-            try {
-                // Alle Schüler mit ihrer Gruppenzugehörigkeit laden
-                $stmt = $pdo->prepare("
-                    SELECT s.*, g.groupname, g.groupid, t.teachername
-                    FROM student s
-                    LEFT JOIN `group` g ON s.groupid = g.groupid
-                    LEFT JOIN teacher t ON g.teacherid = t.teacherid
-                    ORDER BY s.studentname
-                ");
-                $stmt->execute();
-                $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                // Gruppen des Lehrers laden
-                $stmt = $pdo->prepare("SELECT * FROM `group` WHERE teacherid = ?");
-                $stmt->execute([$teacherid]);
-                $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                echo json_encode(['success' => true, 'students' => $students, 'groups' => $groups]);
-            } catch (Exception $e) {
-                echo json_encode(['success' => false, 'message' => 'Fehler beim Laden der Daten']);
-            }
-            exit();
+
             
         case 'get_group_students':
             $groupid = $_POST['groupid'];
